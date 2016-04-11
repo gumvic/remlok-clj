@@ -3,12 +3,13 @@
   :url "http://example.com/FIXME"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.7.0"]
+  :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/clojurescript "1.7.228"]
                  [org.clojure/core.async "0.2.374"]
                  [com.cognitect/transit-clj "0.8.285"]
                  [funcool/promesa "0.8.1"]
-                 [rum "0.6.0"]]
+                 [rum "0.6.0"]
+                 [prismatic/schema "1.1.0"]]
   :plugins [[lein-cljsbuild "1.1.2"]]
   :cljsbuild
   {:builds
