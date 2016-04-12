@@ -3,7 +3,9 @@
   (:require
     [schema.core :as s]))
 
-;; TODO [minor] validation can't tell vector from list and accepts either in any cases
+;; TODO validation can't tell vector from list and accepts either in any cases
+;; TODO Comp-Attr allows multiple values, which it shouldn't
+;; TODO use custom validators
 
 (declare Query)
 
@@ -11,7 +13,7 @@
   s/Keyword)
 
 (def Par-Attr
-  [(s/one Plain-Attr "attr") s/Any])
+  [(s/one Plain-Attr "attr") (s/one s/Any "args")])
 
 (def Comp-Attr
   {(s/cond-pre Plain-Attr Par-Attr)
@@ -25,26 +27,25 @@
 
 (def AST
   [{(s/required-key :attr) Attr
-    (s/optional-key :args) [s/Any]
+    (s/optional-key :args) s/Any
     (s/optional-key :query) (s/recursive #'AST)}])
 
 (declare compile)
 
-;; TODO [minor refactor]
-(defn- compile* [ast attr]
+;; TODO [minor] refactor
+(defn- compile* [attr]
   (cond
     (keyword? attr)
-    (conj ast {:attr attr})
+    {:attr attr}
     (list? attr)
-    (conj ast {:attr (first attr) :args (rest attr)})
+    {:attr (first attr) :args (second attr)}
     (map? attr)
-    (into ast (for [[a q] attr
-                    :let [q* (compile q)]]
-                (cond
-                  (keyword? a)
-                  {:attr a :query q*}
-                  (list? a)
-                  {:attr (first a) :args (rest a) :query q*})))))
+    (let [[a q] (first attr)]
+      (cond
+        (keyword? a)
+        {:attr a :query (compile q)}
+        (list? a)
+        {:attr (first a) :args (second a) :query (compile q)}))))
 
 (defn compile [query]
-  (reduce compile* [] query))
+  (into [] (map compile*) query))
