@@ -1,4 +1,5 @@
 (ns remlok.query
+  (:refer-clojure :exclude [compile])
   (:require
     [schema.core :as s]))
 
@@ -6,20 +7,44 @@
 
 (declare Query)
 
-(def Attr
+(def Plain-Attr
   s/Keyword)
 
-(def ParAttr
-  [(s/one Attr "attr") s/Any])
+(def Par-Attr
+  [(s/one Plain-Attr "attr") s/Any])
 
-(def CompAttr
-  {(s/cond-pre Attr ParAttr)
+(def Comp-Attr
+  {(s/cond-pre Plain-Attr Par-Attr)
    (s/recursive #'Query)})
 
+(def Attr
+  (s/cond-pre Plain-Attr Par-Attr Comp-Attr))
+
 (def Query
-  [(s/cond-pre Attr ParAttr CompAttr)])
+  [Attr])
 
 (def AST
   [{(s/required-key :attr) Attr
     (s/optional-key :args) [s/Any]
     (s/optional-key :query) (s/recursive #'AST)}])
+
+(declare compile)
+
+;; TODO [minor refactor]
+(defn- compile* [ast attr]
+  (cond
+    (keyword? attr)
+    (conj ast {:attr attr})
+    (list? attr)
+    (conj ast {:attr (first attr) :args (rest attr)})
+    (map? attr)
+    (into ast (for [[a q] attr
+                    :let [q* (compile q)]]
+                (cond
+                  (keyword? a)
+                  {:attr a :query q*}
+                  (list? a)
+                  {:attr (first a) :args (rest a) :query q*})))))
+
+(defn compile [query]
+  (reduce compile* [] query))
