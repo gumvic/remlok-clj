@@ -41,13 +41,31 @@
 
 (defn execute [execf ctx query]
   (let [asts (map attr->ast query)]
-    (into
-      {}
-      (map
-        (fn [{:keys [attr] :as ast}]
-          (when-let [val (execf ctx ast)]
-            [attr val])))
+    (reduce
+      (fn [res {:keys [attr] :as ast}]
+        (if-let [{:keys [loc rem]} (execf ctx ast)]
+          (-> res
+              (assoc-in [:loc attr] loc)
+              (update :rem (fn [r r*] (if r* (vec (concat r r*)) r)) rem))
+          res))
+      nil
       asts)))
 
 (defn route [_ ast]
   (get ast :attr))
+
+(comment
+  (require '[remlok.query :refer [execute route]])
+  (defmulti execf route)
+  (defmethod execf :default [_ _]
+    nil)
+  (defmethod execf :foo [_ _]
+    {:loc :foo})
+  (defmethod execf :bar [_ _]
+    {:loc :bar
+     :rem [:bar]})
+  (defmethod execf :baz [ctx {:keys [query]}]
+    (execute execf ctx query))
+  (execute execf nil [:foo])
+  (execute execf nil [:foo :bar :baz])
+  (execute execf nil [{:baz [:foo :bar :zooz]}]))
