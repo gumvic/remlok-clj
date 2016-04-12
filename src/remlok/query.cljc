@@ -4,7 +4,7 @@
     [schema.core :as s]))
 
 ;; TODO validation can't tell vector from list and accepts either in any cases
-;; TODO Comp-Attr allows multiple values, which it shouldn't
+;; TODO Attr allows multiple values, which it shouldn't
 ;; TODO use custom validators
 
 (declare Query)
