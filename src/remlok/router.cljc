@@ -1,4 +1,4 @@
 (ns remlok.router)
 
-(defn route [_ attr _]
-  attr)
+(defn route [_ ast]
+  (get ast :attr))

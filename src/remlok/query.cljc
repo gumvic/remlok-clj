@@ -48,4 +48,5 @@
         {:attr (first a) :args (second a) :query (compile q)}))))
 
 (defn compile [query]
-  (into [] (map compile*) query))
+  (vec
+    (map compile* query)))
