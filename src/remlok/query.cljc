@@ -9,44 +9,43 @@
 
 (declare Query)
 
-(def Plain-Attr
-  s/Keyword)
-
-(def Par-Attr
-  [(s/one Plain-Attr "attr") (s/one s/Any "args")])
-
-(def Comp-Attr
-  {(s/cond-pre Plain-Attr Par-Attr)
-   (s/recursive #'Query)})
-
 (def Attr
-  (s/cond-pre Plain-Attr Par-Attr Comp-Attr))
+  (s/cond-pre
+    s/Keyword
+    {s/Keyword (s/recursive #'Query)}
+    [(s/one s/Keyword "attr")
+     (s/one s/Any "args")]
+    [(s/one {s/Keyword (s/recursive #'Query)} "attr")
+     (s/one s/Any "args")]))
 
 (def Query
   [Attr])
 
 (def AST
-  [{(s/required-key :attr) Attr
+  [{(s/required-key :attr) s/Keyword
     (s/optional-key :args) s/Any
     (s/optional-key :query) (s/recursive #'AST)}])
 
-(declare compile)
-
-;; TODO [minor] refactor
-(defn- compile* [attr]
+(defn- attr->ast* [attr]
   (cond
-    (keyword? attr)
-    {:attr attr}
-    (list? attr)
-    {:attr (first attr) :args (second attr)}
-    (map? attr)
-    (let [[a q] (first attr)]
-      (cond
-        (keyword? a)
-        {:attr a :query (compile q)}
-        (list? a)
-        {:attr (first a) :args (second a) :query (compile q)}))))
+    (keyword? attr) {:attr attr}
+    (map? attr) {:attr (first (first attr))
+                 :query (second (first attr))}))
 
-(defn compile [query]
-  (vec
-    (map compile* query)))
+(defn- attr->ast [attr]
+  (if (list? attr)
+    (assoc
+      (attr->ast* (first attr))
+      :args (second attr))
+    (attr->ast* attr)))
+
+(defn execute [execf ctx query]
+  (let [asts (map attr->ast query)]
+    (into
+      {}
+      (fn [{:keys [attr] :as ast}]
+        [attr (execf ctx ast)])
+      asts)))
+
+(defn route [_ ast]
+  (get ast :attr))
