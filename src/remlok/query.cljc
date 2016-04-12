@@ -43,8 +43,10 @@
   (let [asts (map attr->ast query)]
     (into
       {}
-      (fn [{:keys [attr] :as ast}]
-        [attr (execf ctx ast)])
+      (map
+        (fn [{:keys [attr] :as ast}]
+          (when-let [val (execf ctx ast)]
+            [attr val])))
       asts)))
 
 (defn route [_ ast]
