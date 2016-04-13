@@ -1,4 +1,5 @@
-(ns remlok.router)
+(ns remlok.router
+  (:refer-clojure :exclude [read]))
 
 (defn- attr->ast* [attr]
   (cond
@@ -13,17 +14,23 @@
       :args (second attr))
     (attr->ast* attr)))
 
+(defn- step [readf ctx res ast]
+  (if-let [res* (readf ctx ast)]
+    (-> res
+        (assoc-in
+          [:loc (get ast :attr)]
+          (get res* :loc))
+        (update
+          :rem
+          #(if (seq %2)
+            (vec (concat %1 %2))
+            %1)
+          (get res* :rem)))
+    res))
+
 (defn read [readf ctx query]
   (let [asts (map attr->ast query)]
-    (reduce
-      (fn [res {:keys [attr] :as ast}]
-        (if-let [{:keys [loc rem]} (readf ctx ast)]
-          (-> res
-              (assoc-in [:loc attr] loc)
-              (update :rem (fn [r r*] (if r* (vec (concat r r*)) r)) rem))
-          res))
-      nil
-      asts)))
+    (reduce #(step readf ctx %1 %2) nil asts)))
 
 (defn route [_ ast]
   (get ast :attr))
