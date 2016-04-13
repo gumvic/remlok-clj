@@ -65,7 +65,9 @@
     {:loc :bar
      :rem [:bar]})
   (defmethod execf :baz [ctx {:keys [query]}]
-    (execute execf ctx query))
+    (let [{:keys [loc rem]} (execute execf ctx query)
+          rem (when rem [{:baz rem}])]
+      {:loc loc :rem rem}))
   (execute execf nil [:foo])
   (execute execf nil [:foo :bar :baz])
   (execute execf nil [{:baz [:foo :bar :zooz]}]))
