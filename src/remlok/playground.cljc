@@ -22,20 +22,20 @@
                     {:name "Roger" :age 29}]})
     (r/read readf {:db db} [{:users/guys [:user/name]}])))
 
+(defmulti readf r/route)
+(defmethod readf :users/guys [{:keys [db] :as ctx} {:keys [query]}]
+  (map
+    #(r/read readf (assoc ctx :user %) query)
+    (get db :guys)))
+(defmethod readf :users/girls [_ _]
+  [])
+(defmethod readf :user/name [{:keys [user]} _]
+  (get user :name))
+(defmethod readf :user/age [{:keys [user]} _]
+  (get user :age))
+(defmethod readf :default [_ _]
+  nil)
 (comment
-  (require '[remlok.router :as r])
-  (defmulti readf r/route)
-  (defmethod readf :default [_ _]
-    nil)
-  (defmethod readf :foo [_ _]
-    {:loc :foo})
-  (defmethod readf :bar [_ _]
-    {:loc :bar
-     :rem [:bar]})
-  (defmethod readf :baz [ctx {:keys [query]}]
-    (let [{:keys [loc rem]} (r/read readf ctx query)
-          rem (when rem [{:baz rem}])]
-      {:loc loc :rem rem}))
-  (r/read readf nil [:foo])
-  (r/read readf nil [:foo :bar :baz])
-  (r/read readf nil [{:baz [:foo :bar :zooz]}]))
+  (def db {:guys [{:name "Bob" :age 27}
+                  {:name "Roger" :age 29}]})
+  (r/read readf {:db db} [{:users/guys [:user/name]}]))

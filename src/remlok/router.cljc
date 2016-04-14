@@ -9,12 +9,19 @@
 
 (defn- attr->ast [attr]
   (if (list? attr)
-    (assoc
-      (attr->ast* (first attr))
-      :args (second attr))
+    (if (= (count attr) 2)
+      (let [[attr args] attr]
+        (assoc
+          (attr->ast* attr)
+          :args args))
+      (let [[fun attr args] attr]
+        (assoc
+          (attr->ast* attr)
+          :fun fun
+          :args args)))
     (attr->ast* attr)))
 
-(defn- step [readf ctx res ast]
+#_(defn- step [readf ctx res ast]
   (if-let [res* (readf ctx ast)]
     (-> res
         (assoc-in
@@ -28,9 +35,24 @@
           (get res* :rem)))
     res))
 
-(defn read [readf ctx query]
+#_(defn- step [readf ctx res ast]
+  (if-let [res* (readf ctx ast)]
+    (assoc res )
+    res))
+
+#_(defn read [readf ctx query]
   (let [asts (map attr->ast query)]
     (reduce #(step readf ctx %1 %2) nil asts)))
+
+(defn read [readf ctx query]
+  (into
+    {}
+    (comp
+      (map attr->ast)
+      (map #(when-let [r (readf ctx %)]
+             [(get % :attr) r]))
+      (filter some?))
+    query))
 
 (defn route [_ ast]
   (get ast :attr))
