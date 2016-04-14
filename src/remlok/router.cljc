@@ -21,38 +21,41 @@
           :args args)))
     (attr->ast* attr)))
 
-#_(defn- step [readf ctx res ast]
-  (if-let [res* (readf ctx ast)]
-    (-> res
-        (assoc-in
-          [:loc (get ast :attr)]
-          (get res* :loc))
-        (update
-          :rem
-          #(if (seq %2)
-            (vec (concat %1 %2))
-            %1)
-          (get res* :rem)))
-    res))
+(defn- read-loc [readf ctx query]
+  (not-empty
+    (into
+      {}
+      (comp
+        (map attr->ast)
+        (map #(when-let [r (get (readf ctx %) :loc)]
+               [(get % :attr) r]))
+        (filter some?))
+      query)))
 
-#_(defn- step [readf ctx res ast]
-  (if-let [res* (readf ctx ast)]
-    (assoc res )
-    res))
+(defn- read-rem [readf ctx query]
+  (not-empty
+    (into
+      []
+      (comp
+        (map attr->ast)
+        (map #(get (readf ctx %) :rem))
+        (filter some?))
+      query)))
 
-#_(defn read [readf ctx query]
-  (let [asts (map attr->ast query)]
-    (reduce #(step readf ctx %1 %2) nil asts)))
-
-(defn read [readf ctx query]
-  (into
-    {}
-    (comp
-      (map attr->ast)
-      (map #(when-let [r (readf ctx %)]
-             [(get % :attr) r]))
-      (filter some?))
-    query))
+(defn read [readf ctx query rem?]
+  (if rem?
+    (read-rem
+      readf
+      (assoc ctx
+        :rem? true
+        :rec #(read-rem readf %1 %2))
+      query)
+    (read-loc
+      readf
+      (assoc ctx
+        :rem? false
+        :rec #(read-loc readf %1 %2))
+      query)))
 
 (defn route [_ ast]
-  (get ast :attr))
+  (get :attr ast))
