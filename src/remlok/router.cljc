@@ -42,20 +42,25 @@
         (filter some?))
       query)))
 
-(defn read [readf ctx query rem?]
-  (if rem?
-    (read-rem
-      readf
-      (assoc ctx
-        :rem? true
-        :rec #(read-rem readf %1 %2))
-      query)
-    (read-loc
-      readf
-      (assoc ctx
-        :rem? false
-        :rec #(read-loc readf %1 %2))
-      query)))
+#_(defn read [readf ctx query]
+  (let [ctx (assoc ctx :read #(read readf %1 %2))]
+    (if (get ctx :rem?)
+      (read-rem
+        readf ctx query)
+      (read-loc
+        readf ctx query))))
+
+(defn read [readf ctx query]
+  {:loc (read-loc
+          readf
+          (assoc ctx :read (partial read-loc readf))
+          query)
+   :rem (read-rem
+          readf
+          (assoc ctx :read (partial read-rem readf))
+          query)})
 
 (defn route [_ ast]
-  (get :attr ast))
+  (if-let [fun (get ast :fun)]
+    '(fun (get :attr ast))
+    (get :attr ast)))
