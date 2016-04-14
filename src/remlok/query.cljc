@@ -9,19 +9,29 @@
 
 (declare Query)
 
+(def Plain-Attr
+  s/Keyword)
+
+(def Comp-Attr
+  {Plain-Attr (s/recursive #'Query)})
+
 (def Attr
-  (s/cond-pre
-    s/Keyword
-    {s/Keyword (s/recursive #'Query)}
-    [(s/one s/Keyword "attr")
-     (s/one s/Any "args")]
-    [(s/one {s/Keyword (s/recursive #'Query)} "attr")
-     (s/one s/Any "args")]))
+  (s/cond-pre Plain-Attr Comp-Attr))
+
+(def Par-Attr
+  [(s/one Attr "attr") (s/one s/Any "args")])
+
+(def Fun-Attr
+  [(s/one s/Symbol "fun") (s/one Attr "attr") (s/one s/Any "args")])
 
 (def Query
-  [Attr])
+  [(s/cond-pre
+     Attr
+     Par-Attr
+     Fun-Attr)])
 
 (def AST
   [{(s/required-key :attr) s/Keyword
+    (s/optional-key :fun) s/Symbol
     (s/optional-key :args) s/Any
     (s/optional-key :query) (s/recursive #'AST)}])
