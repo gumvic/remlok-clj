@@ -5,20 +5,55 @@
 (comment
   (require '[remlok.router :as r])
   (defmulti readf r/route)
-  (defmethod readf :users/all [{:keys [db read] :as ctx} {:keys [query]}]
-    {:loc (not-empty
-            (mapv
-              #(read (assoc ctx :user %) query)
-              (get db :people)))})
-  (defmethod readf :user/name [{:keys [user]} _]
-    {:loc (get user :name)})
-  (defmethod readf :user/age [{:keys [user]} _]
-    {:loc (get user :age)})
-  (defmethod readf :default [_ _]
-    nil)
-  (def db {:people
-           [{:name "Bob" :age 27}
-            {:name "Roger" :age 29}
-            {:name "Alice"}]})
-  ;; loc
+  (defn- read-one [cur {:keys [read] :as ctx} {:keys [attr fun args query]}]
+    {:loc (if query
+            (read (assoc ctx :prev cur))
+            cur)
+     :rem (if query
+            (when-let [rem (read (assoc ctx :prev cur) query)]
+              {attr rem}))})
+  (defn- read-many [cur {:keys [read] :as ctx} {:keys [attr fun args query]}]
+    {:loc (if query
+            (mapv #(read (assoc ctx :prev %) query) cur)
+            cur)
+     :rem (when query
+            (when-let [rem (not-empty
+                             (into
+                               []
+                               (comp
+                                 (mapcat #(read (assoc ctx :prev %) query)))
+                               cur))]
+              {attr rem}))})
+  (defmethod readf :default [{:keys [db] :as ctx} {:keys [attr] :as ast}]
+    (let [prev (if (contains? ctx :prev)
+                 (get ctx :prev)
+                 db)
+          cur (get prev attr)]
+      (if (vector? cur)
+        (read-many cur ctx ast)
+        (read-one cur ctx ast))))
+  (def db {:users/all
+           [{:user/name "Bob" :user/age 27}
+            {:user/name "Roger" :user/age 29}
+            {:user/name "Alice"}]})
   (r/read readf {:db db} [{:users/all [:user/name :user/age]}]))
+
+#_(defmethod readf- :default [{:keys [db read] :as ctx} {:keys [attr fun args query]}]
+    (let [prev (get ctx :prev db)]
+      (if-let [cur (get prev attr)]
+        (if (vector? cur)
+          {:loc (if query
+                  (mapv #(read (assoc ctx :prev %) query) cur)
+                  cur)
+           :rem (when query
+                  (when-let [rem (seq (concat (map #(read (assoc ctx :prev %) query) cur)))]
+                    {attr (vec rem)}))}
+          {:loc (if query
+                  (read (assoc ctx :prev cur))
+                  cur)
+           :rem (when query
+                  (when-let [rem (read (assoc ctx :prev cur) query)]
+                    {attr rem}))})
+        {:rem (if query
+                {attr (read (assoc ctx :prev nil) query)}
+                attr)})))
