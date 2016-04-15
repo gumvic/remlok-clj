@@ -35,3 +35,31 @@
     (s/optional-key :fun) s/Symbol
     (s/optional-key :args) s/Any
     (s/optional-key :query) (s/recursive #'AST)}])
+
+(declare compile)
+
+(defn- comp-attr* [attr]
+  (cond
+    (keyword? attr)
+    {:attr attr}
+    (map? attr)
+    (let [[attr query] (first attr)]
+      {:attr attr
+       :query (compile query)})))
+
+(defn- comp-attr [attr]
+  (if (list? attr)
+    (cond
+      (= (count attr) 2)
+      (let [[attr args] attr]
+        {:attr (comp-attr* attr)
+         :args args})
+      (= (count attr) 3)
+      (let [[fun attr args] attr]
+        {:attr (comp-attr* attr)
+         :fun fun
+         :args args}))
+    (comp-attr* attr)))
+
+(defn compile [query]
+  (mapv comp-attr query))

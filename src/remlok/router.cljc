@@ -1,13 +1,13 @@
 (ns remlok.router
   (:refer-clojure :exclude [read]))
 
-(defn- attr->ast* [attr]
+#_(defn- attr->ast* [attr]
   (cond
     (keyword? attr) {:attr attr}
     (map? attr) {:attr (first (first attr))
                  :query (second (first attr))}))
 
-(defn- attr->ast [attr]
+#_(defn- attr->ast [attr]
   (if (list? attr)
     (if (= (count attr) 2)
       (let [[attr args] attr]
@@ -21,7 +21,7 @@
           :args args)))
     (attr->ast* attr)))
 
-(defn- read-loc [readf ctx query]
+#_(defn- read-loc [readf ctx query]
   (not-empty
     (into
       {}
@@ -32,7 +32,7 @@
         (filter some?))
       query)))
 
-(defn- read-rem [readf ctx query]
+#_(defn- read-rem [readf ctx query]
   (not-empty
     (into
       []
@@ -42,17 +42,36 @@
         (filter some?))
       query)))
 
-(defn read [readf ctx query]
+(defn- read-loc [readf ctx ast]
+  (not-empty
+    (into
+      {}
+      (comp
+        (map #(when-let [r (get (readf ctx %) :loc)]
+               [(get % :attr) r]))
+        (filter some?))
+      ast)))
+
+(defn- read-rem [readf ctx ast]
+  (not-empty
+    (into
+      []
+      (comp
+        (map #(get (readf ctx %) :rem))
+        (filter some?))
+      ast)))
+
+(defn read [readf ctx ast]
   {:loc (read-loc
           readf
           (assoc ctx :read (partial read-loc readf))
-          query)
+          ast)
    :rem (read-rem
           readf
           (assoc ctx :read (partial read-rem readf))
-          query)})
+          ast)})
 
-(defn- mut-loc [mutf ctx query]
+#_(defn- mut-loc [mutf ctx query]
   (let [fs (into
              []
              (comp
@@ -63,7 +82,7 @@
       (doseq [f fs]
         (f)))))
 
-(defn- mut-rem [mutf ctx query]
+#_(defn- mut-rem [mutf ctx query]
   (not-empty
     (into
       []
@@ -73,17 +92,37 @@
         (filter some?))
       query)))
 
-(defn mut [mutf ctx query]
+(defn- mut-loc [mutf ctx ast]
+  (let [fs (into
+             []
+             (comp
+               (map #(get (mutf ctx %) :loc))
+               (filter some?))
+             ast)]
+    (fn []
+      (doseq [f fs]
+        (f)))))
+
+(defn- mut-rem [mutf ctx ast]
+  (not-empty
+    (into
+      []
+      (comp
+        (map #(get (mutf ctx %) :rem))
+        (filter some?))
+      ast)))
+
+(defn mut [mutf ctx ast]
   {:loc (mut-loc
           mutf
           (assoc ctx :mut (partial mut-loc mutf))
-          query)
+          ast)
    :rem (mut-rem
           mutf
           (assoc ctx :mut (partial mut-rem mutf))
-          query)})
+          ast)})
 
 (defn route [_ ast]
   (if-let [fun (get ast :fun)]
-    `(~fun ~(get :attr ast))
-    (get :attr ast)))
+    `(~fun ~(get ast :attr))
+    (get ast :attr)))

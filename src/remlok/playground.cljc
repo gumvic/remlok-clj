@@ -1,5 +1,6 @@
 (ns remlok.playground
   (:require
+    [remlok.query :as q]
     [remlok.router :as r]))
 
 (comment
@@ -39,11 +40,12 @@
   (r/read readf {:db db} [{:users/all [:user/name :user/age]}]))
 
 (comment
+  (require '[remlok.query :as q])
   (require '[remlok.router :as r])
   (defmulti readf r/route)
   (defmethod readf :users [{:keys [db read] :as ctx} {:keys [query]}]
     {:loc (mapv
-            #(read (assoc ctx :user %) query)
+            #(read (assoc ctx :user (second %)) query)
             (get @db :users))})
   (defmethod readf :user/name [{:keys [user]} _]
     {:loc (get user :user/name)})
@@ -51,10 +53,15 @@
     {:loc (get user :user/age)})
   (defmethod readf :default [_ _]
     nil)
+  (defmulti mutf r/route)
+  (defmethod mutf :user/ages! [{:keys [db]} {:keys [args]}]
+    {:loc (fn [] (vswap! db update-in [:users args :user/age] inc))})
   (def db
     (volatile!
       {:users
        {1 {:db/id 1 :user/name "Bob" :user/age 27}
         2 {:db/id 2 :user/name "Roger" :user/age 29}
         3 {:db/id 3 :user/name "Alice" :user/age 25}}}))
-  (r/read readf {:db db} [{:users/all [:user/name :user/age]}]))
+  (r/read readf {:db db} (q/compile [{:users [:user/name :user/age]}]))
+  (r/mut mutf {:db db} (q/compile '[(:user/ages! 1)]))
+  (r/read readf {:db db} (q/compile [{:users [:user/name :user/age]}])))
