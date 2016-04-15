@@ -37,3 +37,24 @@
             {:user/name "Roger" :user/age 29}
             {:user/name "Alice"}]})
   (r/read readf {:db db} [{:users/all [:user/name :user/age]}]))
+
+(comment
+  (require '[remlok.router :as r])
+  (defmulti readf r/route)
+  (defmethod readf :users [{:keys [db read] :as ctx} {:keys [query]}]
+    {:loc (mapv
+            #(read (assoc ctx :user %) query)
+            (get @db :users))})
+  (defmethod readf :user/name [{:keys [user]} _]
+    {:loc (get user :user/name)})
+  (defmethod readf :user/age [{:keys [user]} _]
+    {:loc (get user :user/age)})
+  (defmethod readf :default [_ _]
+    nil)
+  (def db
+    (volatile!
+      {:users
+       {1 {:db/id 1 :user/name "Bob" :user/age 27}
+        2 {:db/id 2 :user/name "Roger" :user/age 29}
+        3 {:db/id 3 :user/name "Alice" :user/age 25}}}))
+  (r/read readf {:db db} [{:users/all [:user/name :user/age]}]))
