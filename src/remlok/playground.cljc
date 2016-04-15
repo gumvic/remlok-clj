@@ -37,23 +37,3 @@
             {:user/name "Roger" :user/age 29}
             {:user/name "Alice"}]})
   (r/read readf {:db db} [{:users/all [:user/name :user/age]}]))
-
-#_(defmethod readf- :default [{:keys [db read] :as ctx} {:keys [attr fun args query]}]
-    (let [prev (get ctx :prev db)]
-      (if-let [cur (get prev attr)]
-        (if (vector? cur)
-          {:loc (if query
-                  (mapv #(read (assoc ctx :prev %) query) cur)
-                  cur)
-           :rem (when query
-                  (when-let [rem (seq (concat (map #(read (assoc ctx :prev %) query) cur)))]
-                    {attr (vec rem)}))}
-          {:loc (if query
-                  (read (assoc ctx :prev cur))
-                  cur)
-           :rem (when query
-                  (when-let [rem (read (assoc ctx :prev cur) query)]
-                    {attr rem}))})
-        {:rem (if query
-                {attr (read (assoc ctx :prev nil) query)}
-                attr)})))

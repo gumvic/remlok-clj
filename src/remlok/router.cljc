@@ -42,14 +42,6 @@
         (filter some?))
       query)))
 
-#_(defn read [readf ctx query]
-  (let [ctx (assoc ctx :read #(read readf %1 %2))]
-    (if (get ctx :rem?)
-      (read-rem
-        readf ctx query)
-      (read-loc
-        readf ctx query))))
-
 (defn read [readf ctx query]
   {:loc (read-loc
           readf
@@ -62,5 +54,5 @@
 
 (defn route [_ ast]
   (if-let [fun (get ast :fun)]
-    '(fun (get :attr ast))
+    `(~fun ~(get :attr ast))
     (get :attr ast)))
