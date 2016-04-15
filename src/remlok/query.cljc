@@ -52,13 +52,15 @@
     (cond
       (= (count attr) 2)
       (let [[attr args] attr]
-        {:attr (comp-attr* attr)
-         :args args})
+        (assoc
+          (comp-attr* attr)
+          :args args))
       (= (count attr) 3)
       (let [[fun attr args] attr]
-        {:attr (comp-attr* attr)
-         :fun fun
-         :args args}))
+        (assoc
+          (comp-attr* attr)
+          :fun fun
+          :args args)))
     (comp-attr* attr)))
 
 (defn compile [query]
