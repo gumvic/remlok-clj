@@ -1,5 +1,4 @@
 (ns remlok.query
-  (:refer-clojure :exclude [compile])
   (:require
     [schema.core :as s]))
 
@@ -36,32 +35,51 @@
     (s/optional-key :args) s/Any
     (s/optional-key :query) (s/recursive #'AST)}])
 
-(declare compile)
+(declare query->ast)
 
-(defn- comp-attr* [attr]
+(defn- attr->ast* [attr]
   (cond
     (keyword? attr)
     {:attr attr}
     (map? attr)
     (let [[attr query] (first attr)]
       {:attr attr
-       :query (compile query)})))
+       :query (query->ast query)})))
 
-(defn- comp-attr [attr]
+(defn- attr->ast [attr]
   (if (list? attr)
     (cond
       (= (count attr) 2)
       (let [[attr args] attr]
         (assoc
-          (comp-attr* attr)
+          (attr->ast* attr)
           :args args))
       (= (count attr) 3)
       (let [[fun attr args] attr]
         (assoc
-          (comp-attr* attr)
+          (attr->ast* attr)
           :fun fun
           :args args)))
-    (comp-attr* attr)))
+    (attr->ast* attr)))
 
-(defn compile [query]
-  (mapv comp-attr query))
+(defn query->ast [query]
+  (mapv attr->ast query))
+
+(declare ast->query)
+
+(defn- ast->attr* [ast]
+  (let [{:keys [attr query]} ast]
+    (if query
+      {attr (ast->query query)}
+      attr)))
+
+(defn- ast->attr [ast]
+  (let [{:keys [fun args]} ast]
+    (let [attr (ast->attr* ast)]
+      (cond
+        fun `(~fun ~attr ~args)
+        args `(~attr ~args)
+        :else attr))))
+
+(defn ast->query [ast]
+  (mapv ast->attr ast))
