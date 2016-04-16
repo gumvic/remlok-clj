@@ -1,4 +1,4 @@
-(ns remlok.impl.readmut)
+(ns remlok.impl.exec)
 
 (defn- read-loc [readf ctx ast]
   (let [read* #(read-loc readf %1 %2)
@@ -24,7 +24,7 @@
         ast))))
 
 (defn- mut-loc [mutf ctx ast]
-  (let [mut* #(read-rem mutf %1 %2)
+  (let [mut* #(mut-loc mutf %1 %2)
         ctx (assoc ctx :mut mut*)]
     (let [fs (into
                []
@@ -37,7 +37,7 @@
           (f))))))
 
 (defn- mut-rem [mutf ctx ast]
-  (let [mut* #(read-rem mutf %1 %2)
+  (let [mut* #(mut-rem mutf %1 %2)
         ctx (assoc ctx :mut mut*)]
     (not-empty
       (into
