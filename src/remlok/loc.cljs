@@ -133,23 +133,46 @@
   (let [{:keys [render!]} (ui-state app id)]
     (render!)))
 
-;;
+;;;;;;;;;;
+;; Sync ;;
+;;;;;;;;;;
 
-(defn- read [app query])
-
-(defn- mut! [app query])
+(defn- sync! [app]
+  (let [{:keys [state funs]} app
+        {:keys [syncf]} funs
+        {:keys [reads muts]} (get @state :remlok/sync)
+        sync (merge
+               (when (seq reads) {:reads reads})
+               (when (seq muts) {:muts muts}))]
+    (when (seq sync)
+      (syncf sync))
+    (vswap! state assoc :remlok/sync {:scheduled? false
+                                      :reads []
+                                      :muts []})))
 
 ;;;;;;;;;
 ;; App ;;
 ;;;;;;;;;
 
 (def ^:private def-funs
-  {})
+  {:readf (fn [_ _])
+   :mutf (fn [_ _])
+   :syncf (fn [_])})
 
 (defn app [funs]
   {:state (volatile!
             {:remlok/ui
              {:attr->ui {}
               :ui->state {}}
-             :remlok/db {}})
+             :remlok/db {}
+             :remlok/sync
+             {:scheduled? false
+              :reads []
+              :muts []}})
    :funs (merge def-funs funs)})
+
+(defn mount! [app com el]
+  (binding [*app* app]
+    (rum/mount
+      (com)
+      el)))
