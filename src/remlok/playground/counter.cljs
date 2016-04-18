@@ -4,8 +4,8 @@
     [remlok.loc :refer [app ui]]))
 
 (defmulti readf route)
-(defmethod readf :counter [db _]
-  db)
+(defmethod readf :counter [{:keys [db]} _]
+  {:loc db})
 (defmethod readf :default [_ _]
   nil)
 

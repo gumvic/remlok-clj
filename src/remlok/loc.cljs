@@ -9,8 +9,6 @@
 ;; TODO comp name
 ;; TODO modularize (but how?)
 
-(enable-console-print!)
-
 ;;;;;;;;;;;;;;;;;;;;
 ;; React Wrappers ;;
 ;;;;;;;;;;;;;;;;;;;;
@@ -138,7 +136,7 @@
 ;;;;;;;;;;;;;;;;;;;
 
 (defn- ast+args->ast [ast args]
-  )
+  ast)
 
 (defn- ast->attrs [ast]
   )
