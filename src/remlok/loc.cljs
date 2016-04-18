@@ -9,6 +9,8 @@
 ;; TODO comp name
 ;; TODO modularize (but how?)
 
+(enable-console-print!)
+
 ;;;;;;;;;;;;;;;;;;;;
 ;; React Wrappers ;;
 ;;;;;;;;;;;;;;;;;;;;
@@ -145,7 +147,7 @@
 
 (defn- ui-reset! [app id st]
   (let [{:keys [state]} app]
-    (vswap! state update-in [:remlok/ui :ui->state id] st)))
+    (vswap! state assoc-in [:remlok/ui :ui->state id] st)))
 
 (defn- ui-forget! [app id]
   (let [{:keys [state]} app]
@@ -162,25 +164,25 @@
                 (get-in @state [:remlok/ui :attr->ui attr]))
       (vswap! state update-in [:remlok/ui :attr->ui] dissoc attr))))
 
-(defn- ui-sync-loc! [app id]
+(defn- ui-sync! [app id]
   (let [{:keys [state funs]} app
         {:keys [readf]} funs
         {:keys [ast]} (ui-state app id)
-        loc (read-loc readf state ast)]
-    (ui-swap! app id #(assoc % :loc loc))))
+        loc (read-loc readf {:st state} ast)
+        rem (q/query->ast
+              (read-rem readf {:st state} ast))]
+    (when (seq rem)
+      (schedule-read! app rem))
+    (ui-swap! app id #(assoc % :loc loc :rem rem))))
 
-(defn- ui-sync-rem! [app id]
-  (let [{:keys [state funs]} app
+(defn- ui-sync-fat! [app id]
+  (let [{:keys [funs]} app
         {:keys [readf]} funs
         {:keys [ast]} (ui-state app id)
         rem (q/query->ast
-              (read-rem readf state ast))]
+              (read-rem readf {:st nil} ast))]
     (when (seq rem)
       (schedule-read! app rem))))
-
-(defn- ui-sync! [app id]
-  (ui-sync-loc! app id)
-  (ui-sync-rem! app id))
 
 (defn- ui-reg! [app id ui]
   (let [{:keys [query render render!]} ui
