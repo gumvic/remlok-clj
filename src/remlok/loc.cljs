@@ -2,7 +2,8 @@
   (:refer-clojure :exclude [read])
   (:require
     [rum.core :as rum]
-    [sablono.core :refer-macros [html]]))
+    [sablono.core :refer-macros [html]]
+    [remlok.query :as q]))
 
 ;; TODO when comp mounts, it renders twice (must be handled on rum side)
 ;; TODO comp name
@@ -17,11 +18,11 @@
 (def ^:private ^:dynamic *app*)
 
 (defn- rum-will-mount
-  [{app ::app id :rum/id re-com :rum/react-component args ::args com ::com :as st}]
+  [{app ::app id :rum/id re-com :rum/react-component args ::args ui ::ui :as st}]
   (let [render! #(rum/request-render re-com)
-        com* (assoc com :render! render!)]
-    (com-reg! app id com*)
-    (com-args! app id args))
+        ui* (assoc ui :render! render!)]
+    (ui-reg! app id ui*)
+    (ui-args! app id args))
   st)
 
 (defn- rum-should-update
@@ -30,19 +31,19 @@
 
 (defn- rum-transfer-state
   [_ {app ::app id :rum/id args ::args :as st}]
-  (com-args! app id args)
+  (ui-args! app id args)
   st)
 
 (defn- rum-render
   [{app ::app id :rum/id :as st}]
   (let [vdom (binding [*app* app]
                (html
-                 (com-render app id)))]
+                 (ui-render app id)))]
     [vdom st]))
 
 (defn- rum-will-unmount
   [{app ::app id :rum/id :as st}]
-  (com-unreg! app id)
+  (ui-unreg! app id)
   st)
 
 (def ^:private rum-mixin
@@ -52,17 +53,17 @@
    :render rum-render
    :will-unmount rum-will-unmount})
 
-(defn- rum-com [com]
+(defn- rum-com [ui]
   (let [class (rum/build-class [rum-mixin] "anonymous")]
     (fn
       ([]
        (rum/element
          class
-         {::args nil ::app *app* ::com com}))
+         {::args nil ::app *app* ::ui ui}))
       ([args]
        (rum/element
          class
-         {::args args ::app *app* ::com com})))))
+         {::args args ::app *app* ::ui ui})))))
 
 (defn ui [ui]
   (rum-com ui))
@@ -73,26 +74,64 @@
 
 (defn- ui-state [app id]
   (let [{:keys [state]} app]
-    (get-in @state [:remlok/ui :remlok/ui->state id])))
+    (get-in @state [:remlok/ui :ui->state id])))
 
-(defn- ui-swap-state! [app id f]
+(defn- ui-swap! [app id f]
   (let [{:keys [state]} app]
-    (vswap! state update-in [:remlok/ui :remlok/ui->state id] f)))
+    (vswap! state update-in [:remlok/ui :ui->state id] f)))
 
-(defn- ui-reset-state! [app id st]
+(defn- ui-reset! [app id st]
   (let [{:keys [state]} app]
-    (vswap! state update-in [:remlok/ui :remlok/ui->state id] st)))
+    (vswap! state update-in [:remlok/ui :ui->state id] st)))
 
-(defn- ui-reg! [app id])
+(defn- ui-forget! [app id]
+  (let [{:keys [state]} app]
+    (vswap! state update-in [:remlok/ui :ui->state] dissoc id)))
 
-(defn- ui-args! [app id])
+(defn- ui-sub! [app id attr]
+  (let [{:keys [state]} app]
+    (vswap! state update-in [:remlok/ui :attr->ui attr] (fnil conj #{}) id)))
 
-(defn- ui-unreg! [app id])
+(defn- ui-unsub! [app id attr]
+  (let [{:keys [state]} app]
+    (vswap! state update-in [:remlok/ui :attr->ui attr] disj id)
+    (when-not (seq
+                (get-in @state [:remlok/ui :attr->ui attr]))
+      (vswap! state update-in [:remlok/ui :attr->ui] dissoc attr))))
 
-(defn- ui-render [app id])
+(defn- ui-reg! [app id ui]
+  (ui-reset! app id ui))
+
+(defn- query+args->ast [query args]
+  )
+
+(defn- ast->attrs [ast]
+  )
+
+(defn- ui-args! [app id args]
+  (let [{:keys [query attrs]} (ui-state app id)
+        ast (when query
+              (query+args->ast query args))
+        attrs* (ast->attrs ast)]
+    (doseq [attr attrs]
+      (ui-unsub! app id attr))
+    (doseq [attr attrs*]
+      (ui-sub! app id attr))
+    (ui-swap! app id #(assoc % :ast ast :attrs attrs*))))
+
+(defn- ui-unreg! [app id]
+  (let [{:keys [attrs]} (ui-state app id)]
+    (doseq [attr attrs]
+      (ui-unsub! app id attr))
+    (ui-forget! app id)))
+
+(defn- ui-render [app id]
+  (let [{:keys [ast render]} (ui-state app id)]
+    ))
 
 (defn- ui-render! [app id]
-  )
+  (let [{:keys [render!]} (ui-state app id)]
+    (render!)))
 
 ;;
 
