@@ -119,6 +119,16 @@
           (filter some?))
         ast))))
 
+;;;;;;;;;;;;;;;;;;;
+;; Query Helpers ;;
+;;;;;;;;;;;;;;;;;;;
+
+(defn- ast+args->ast [ast args]
+  )
+
+(defn- ast->attrs [ast]
+  )
+
 ;;;;;;;;;;;;;;
 ;; UI State ;;
 ;;;;;;;;;;;;;;
@@ -163,34 +173,31 @@
   (let [{:keys [state funs]} app
         {:keys [readf]} funs
         {:keys [ast]} (ui-state app id)
-        rem (read-rem readf state ast)]
+        rem (q/query->ast
+              (read-rem readf state ast))]
     (when (seq rem)
-      (schedule-read! app rem))
-    (ui-swap! app id #(assoc % :rem rem))))
+      (schedule-read! app rem))))
 
 (defn- ui-sync! [app id]
   (ui-sync-loc! app id)
   (ui-sync-rem! app id))
 
 (defn- ui-reg! [app id ui]
-  (ui-reset! app id ui))
-
-(defn- query+args->ast [query args]
-  )
-
-(defn- ast->attrs [ast]
-  )
+  (let [{:keys [query render render!]} ui
+        ast (q/query->ast query)
+        attrs (ast->attrs ast)
+        st {:ast ast
+            :attrs attrs
+            :render render
+            :render! render!}]
+    (doseq [attr attrs]
+      (ui-sub! app id attr))
+    (ui-reset! app id st)))
 
 (defn- ui-args! [app id args]
-  (let [{:keys [query attrs]} (ui-state app id)
-        ast (when query
-              (query+args->ast query args))
-        attrs* (ast->attrs ast)]
-    (doseq [attr attrs]
-      (ui-unsub! app id attr))
-    (doseq [attr attrs*]
-      (ui-sub! app id attr))
-    (ui-swap! app id #(assoc % :ast ast :attrs attrs*))
+  (let [{:keys [ast]} (ui-state app id)
+        ast (ast+args->ast ast args)]
+    (ui-swap! app id #(assoc % :ast ast))
     (ui-sync! app id)))
 
 (defn- ui-unreg! [app id]
