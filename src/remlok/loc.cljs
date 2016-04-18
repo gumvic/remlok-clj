@@ -295,25 +295,46 @@
     (ui-forget! app id)))
 
 (defn- ui-render [app id]
-  (let [{:keys [loc render]} (ui-state app id)]
-    (render loc)))
+  (let [{:keys [loc render]} (ui-state app id)
+        ui {:app app :id id}]
+    (render loc ui)))
 
 (defn- ui-render! [app id]
   (let [{:keys [render!]} (ui-state app id)]
     (render!)))
 
+(defn args! [ui args]
+  (let [{:keys [app id]} ui]
+    (ui-args! app id args)))
+
+(defn mut! [ui query]
+  (let [ast (q/query->ast query)]))
+
 ;;;;;;;;;;
 ;; Sync ;;
 ;;;;;;;;;;
 
+(defn merge! [app ast tree]
+  (let [{:keys [state]} app
+        {:keys [normf mergef]} @state
+        attrs (ast->attrs ast)
+        db* (normf tree)]
+    (vswap! state update :db mergef db*)
+    (doseq [attr attrs]
+      )))
+
 (defn- sync! [app]
   (let [{:keys [state]} app
-        {{:keys [reads muts]} :sync syncf :syncf} @state
+        {{:keys [reads muts]} :sync
+         syncf :syncf} @state
         sync (merge
                (when (seq reads) {:reads reads})
                (when (seq muts) {:muts muts}))]
     (when (seq sync)
-      (syncf sync))
+      (syncf
+        sync
+        #(doseq [[ast tree] %]
+          (merge! app ast tree))))
     (vswap! state assoc :sync {:scheduled? false
                                :reads []
                                :muts []})))
@@ -351,7 +372,9 @@
           :muts []}
    :readf (fn [_ _])
    :mutf (fn [_ _])
-   :syncf (fn [_])})
+   :syncf (fn [_])
+   :normf identity
+   :mergef merge})
 
 (defn app [state]
   {:state
