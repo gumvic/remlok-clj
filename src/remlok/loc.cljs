@@ -65,8 +65,99 @@
          class
          {::args args ::app *app* ::ui ui})))))
 
+;;;;;;;;;;;;;;;;;
+;; AST Helpers ;;
+;;;;;;;;;;;;;;;;;
+
+(defn- arg? [x]
+  (and
+    (symbol? x)
+    (= (first (name x)) \?)))
+
+(defn- arg-name [arg]
+  (subs (name arg) 1))
+
+(defn- coll-kv [x]
+  (cond
+    (map? x) x
+    (vector? x) (map-indexed #(vector %1 %2) x)
+    :else nil))
+
+(declare arg-paths)
+
+(defn- args-arg-paths [path args]
+  (if (map? args)
+    (for [[i x] args
+          :when (arg? x)]
+      [(conj path i) (keyword (arg-name x))])
+    (when (arg? args)
+      [[path (keyword (arg-name args))]])))
+
+(defn- attr-arg-paths [path {:keys [query args]}]
+  (concat
+    (when args
+      (args-arg-paths (conj path :args) args))
+    (when query
+      (arg-paths (conj path :query) query))))
+
+(defn- arg-paths
+  ([ast]
+    (arg-paths [] ast))
+  ([path ast]
+   (mapcat
+     identity
+     (map-indexed
+       (fn [i attr]
+         (attr-arg-paths (conj path i) attr))
+       ast))))
+
+(defn- ast->attrs [ast]
+  (distinct
+    (reduce
+      (fn [attrs {:keys [attr query]}]
+        (if query
+          (into attrs (ast->attrs query))
+          (conj attrs attr)))
+      []
+      ast)))
+
+(defn- ast->ast* [ast paths args]
+  (reduce
+    (fn [ast [path name]]
+      (let [arg (get args name ::not-found)]
+        (if (not= arg ::not-found)
+          (assoc-in ast path arg)
+          ast)))
+    ast
+    paths))
+
+(comment
+  (pprint
+    (arg-paths
+      (q/query->ast '[(:foo ?bar)
+                      {:baz [(limit :bax {:from 0 :to ?to})]}])))
+  (let [q '[(:foo ?bar)
+            {:baz [(limit :bax {:from 0 :to ?to})]}]
+        ast (q/query->ast q)
+        paths (arg-paths ast)
+        args {:to 10}]
+    (pprint
+      (q/ast->query
+        (ast->ast* ast paths args)))))
+
+;;;;;;;;
+;; UI ;;
+;;;;;;;;
+
 (defn ui [ui]
-  (rum-com ui))
+  (let [{:keys [query render]} ui
+        ast (q/query->ast query)
+        paths (arg-paths ast)
+        ui* {:ast ast
+             :ast->ast* #(ast->ast* ast paths %)
+             :attrs (ast->attrs ast)
+             :render render}]
+    (rum-com ui*)))
 
 ;;;;;;;;;;;;;;
 ;; Read/Mut ;;
@@ -131,16 +222,6 @@
         ctx* (assoc ctx :mut f*)]
     (f* ctx* ast)))
 
-;;;;;;;;;;;;;;;;;;;
-;; Query Helpers ;;
-;;;;;;;;;;;;;;;;;;;
-
-(defn- ast+args->ast [ast args]
-  ast)
-
-(defn- ast->attrs [ast]
-  )
-
 ;;;;;;;;;;;;;;
 ;; UI State ;;
 ;;;;;;;;;;;;;;
@@ -177,11 +258,11 @@
 (defn- ui-sync! [app id]
   (let [{:keys [state]} app
         {:keys [db readf]} @state
-        {:keys [ast]} (ui-state app id)
+        {:keys [ast*]} (ui-state app id)
         ctx {:db db}
-        loc (read-loc readf ctx ast)
+        loc (read-loc readf ctx ast*)
         rem (q/query->ast
-              (read-rem readf ctx ast))]
+              (read-rem readf ctx ast*))]
     (when (seq rem)
       (schedule-read! app rem))
     (ui-swap! app id #(assoc % :loc loc :rem rem))))
@@ -189,29 +270,23 @@
 (defn- ui-sync-fat! [app id]
   (let [{:keys [state]} app
         {:keys [readf]} @state
-        {:keys [ast]} (ui-state app id)
+        {:keys [ast*]} (ui-state app id)
         ctx {:db nil}
         rem (q/query->ast
-              (read-rem readf ctx ast))]
+              (read-rem readf ctx ast*))]
     (when (seq rem)
       (schedule-read! app rem))))
 
-(defn- ui-reg! [app id ui]
-  (let [{:keys [query render render!]} ui
-        ast (q/query->ast query)
-        attrs (ast->attrs ast)
-        st {:ast ast
-            :attrs attrs
-            :render render
-            :render! render!}]
+(defn- ui-reg! [app id st]
+  (let [{:keys [attrs]} st]
     (doseq [attr attrs]
       (ui-sub! app id attr))
     (ui-reset! app id st)))
 
 (defn- ui-args! [app id args]
   (let [{:keys [ast]} (ui-state app id)
-        ast (ast+args->ast ast args)]
-    (ui-swap! app id #(assoc % :ast ast))
+        ast* (ast+args->ast* ast args)]
+    (ui-swap! app id #(assoc % :ast* ast*))
     (ui-sync! app id)))
 
 (defn- ui-unreg! [app id]
