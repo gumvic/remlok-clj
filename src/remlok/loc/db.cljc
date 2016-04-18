@@ -1,4 +1,4 @@
-(ns remlok.db
+(ns remlok.loc.db
   (:refer-clojure :exclude [read]))
 
 (defn- wildcard? [x]
@@ -68,7 +68,7 @@
           av))
       eav)))
 
-(defn read [db query]
+(defn- read* [db query]
   (let [[e a v] query]
     (case [(wildcard? e)
            (wildcard? a)
@@ -83,7 +83,7 @@
       [true true true] (___ db e a v)
       nil)))
 
-(defn mut [db query]
+(defn- mut* [db query]
   (let [{:keys [eav aev ave vae]} db
         [e a v] query
         eav* (update-in eav [e a] (fnil conj []) v)
@@ -91,3 +91,9 @@
         ave* (update-in ave [a v] (fnil conj []) e)
         vae* (update-in vae [v a] (fnil conj []) e)]
     (assoc db :eav eav* :aev aev* :ave ave* :vae vae*)))
+
+(defn read [st query]
+  (read* (get st :remlok/db) query))
+
+(defn mut! [st query]
+  (vswap! st update :remlok/db mut* query))
