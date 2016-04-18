@@ -29,15 +29,15 @@
      Par-Node
      Fun-Node)])
 
-(def AST
+#_(def AST
   [{(s/required-key :attr) s/Keyword
     (s/optional-key :fun) s/Symbol
     (s/optional-key :args) s/Any
     (s/optional-key :query) (s/recursive #'AST)}])
 
-(declare query->ast)
+#_(declare query->ast)
 
-(defn- attr->ast* [attr]
+#_(defn- attr->ast* [attr]
   (cond
     (keyword? attr)
     {:attr attr}
@@ -46,7 +46,7 @@
       {:attr attr
        :query (query->ast query)})))
 
-(defn- attr->ast [attr]
+#_(defn- attr->ast [attr]
   (if (list? attr)
     (cond
       (= (count attr) 2)
@@ -62,18 +62,18 @@
           :args args)))
     (attr->ast* attr)))
 
-(defn query->ast [query]
+#_(defn query->ast [query]
   (mapv attr->ast query))
 
-(declare ast->query)
+#_(declare ast->query)
 
-(defn- ast->attr* [ast]
+#_(defn- ast->attr* [ast]
   (let [{:keys [attr query]} ast]
     (if query
       {attr (ast->query query)}
       attr)))
 
-(defn- ast->attr [ast]
+#_(defn- ast->attr [ast]
   (let [{:keys [fun args]} ast]
     (let [attr (ast->attr* ast)]
       (cond
@@ -81,7 +81,7 @@
         args `(~attr ~args)
         :else attr))))
 
-(defn ast->query [ast]
+#_(defn ast->query [ast]
   (mapv ast->attr ast))
 
 (defn nodes [query]
@@ -120,4 +120,9 @@
 (defn subq [node]
   (cond
     (join? node) (second (first node))
+    :else nil))
+
+(defn fun [node]
+  (cond
+    (call? node) (first node)
     :else nil))

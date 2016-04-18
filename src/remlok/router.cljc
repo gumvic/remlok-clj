@@ -1,6 +1,8 @@
-(ns remlok.router)
+(ns remlok.router
+  (:require
+    [remlok.query :as q]))
 
-(defn route [_ ast]
-  (if-let [fun (get ast :fun)]
-    `(~fun ~(get ast :attr))
-    (get ast :attr)))
+(defn route [_ node]
+  (if-let [fun (q/fun node)]
+    `(~fun ~(q/attr node))
+    (q/attr node)))
