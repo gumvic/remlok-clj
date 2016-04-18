@@ -177,9 +177,8 @@
       (vswap! state update-in [:ui :attr->ui] dissoc attr))))
 
 (defn- ui-sync! [app id]
-  (let [{:keys [state funs]} app
-        {:keys [readf]} funs
-        {:keys [db]} @state
+  (let [{:keys [state]} app
+        {:keys [db readf]} @state
         {:keys [ast]} (ui-state app id)
         ctx {:db db}
         loc (read-loc readf ctx ast)
@@ -190,8 +189,8 @@
     (ui-swap! app id #(assoc % :loc loc :rem rem))))
 
 (defn- ui-sync-fat! [app id]
-  (let [{:keys [funs]} app
-        {:keys [readf]} funs
+  (let [{:keys [state]} app
+        {:keys [readf]} @state
         {:keys [ast]} (ui-state app id)
         ctx {:db nil}
         rem (q/query->ast
@@ -236,9 +235,8 @@
 ;;;;;;;;;;
 
 (defn- sync! [app]
-  (let [{:keys [state funs]} app
-        {:keys [syncf]} funs
-        {:keys [reads muts]} (get @state :sync)
+  (let [{:keys [state]} app
+        {{:keys [reads muts]} :sync syncf :syncf} @state
         sync (merge
                (when (seq reads) {:reads reads})
                (when (seq muts) {:muts muts}))]
@@ -272,22 +270,21 @@
 ;; App ;;
 ;;;;;;;;;
 
-(def ^:private def-funs
-  {:readf (fn [_ _])
-   :mutf (fn [_ _])
-   :syncf (fn [_])})
-
 (def ^:private def-state
   {:ui {:attr->ui {}
         :ui->state {}}
    :db nil
    :sync {:scheduled? false
           :reads []
-          :muts []}})
+          :muts []}
+   :readf (fn [_ _])
+   :mutf (fn [_ _])
+   :syncf (fn [_])})
 
-(defn app [funs]
-  {:state (volatile! def-state)
-   :funs (merge def-funs funs)})
+(defn app [state]
+  {:state
+   (volatile!
+     (merge def-state state))})
 
 (defn mount! [app com el]
   (binding [*app* app]
