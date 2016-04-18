@@ -69,8 +69,61 @@
   (rum-com ui))
 
 ;;;;;;;;;;;;;;
+;; Read/Mut ;;
+;;;;;;;;;;;;;;
+
+(defn- read-loc [readf ctx ast]
+  (let [read* #(read-loc readf %1 %2)
+        ctx (assoc ctx :read read*)]
+    (not-empty
+      (into
+        {}
+        (comp
+          (map #(when-let [r (get (readf ctx %) :loc)]
+                 [(get % :attr) r]))
+          (filter some?))
+        ast))))
+
+(defn- read-rem [readf ctx ast]
+  (let [read* #(read-rem readf %1 %2)
+        ctx (assoc ctx :read read*)]
+    (not-empty
+      (into
+        []
+        (comp
+          (map #(get (readf ctx %) :rem))
+          (filter some?))
+        ast))))
+
+(defn- mut-loc [mutf ctx ast]
+  (let [mut* #(mut-loc mutf %1 %2)
+        ctx (assoc ctx :mut mut*)]
+    (let [fs (into
+               []
+               (comp
+                 (map #(get (mutf ctx %) :loc))
+                 (filter some?))
+               ast)]
+      (fn []
+        (doseq [f fs]
+          (f))))))
+
+(defn- mut-rem [mutf ctx ast]
+  (let [mut* #(mut-rem mutf %1 %2)
+        ctx (assoc ctx :mut mut*)]
+    (not-empty
+      (into
+        []
+        (comp
+          (map #(get (mutf ctx %) :rem))
+          (filter some?))
+        ast))))
+
+;;;;;;;;;;;;;;
 ;; UI State ;;
 ;;;;;;;;;;;;;;
+
+(declare schedule-read! schedule-mut!)
 
 (defn- ui-state [app id]
   (let [{:keys [state]} app]
@@ -99,6 +152,26 @@
                 (get-in @state [:remlok/ui :attr->ui attr]))
       (vswap! state update-in [:remlok/ui :attr->ui] dissoc attr))))
 
+(defn- ui-sync-loc! [app id]
+  (let [{:keys [state funs]} app
+        {:keys [readf]} funs
+        {:keys [ast]} (ui-state app id)
+        loc (read-loc readf state ast)]
+    (ui-swap! app id #(assoc % :loc loc))))
+
+(defn- ui-sync-rem! [app id]
+  (let [{:keys [state funs]} app
+        {:keys [readf]} funs
+        {:keys [ast]} (ui-state app id)
+        rem (read-rem readf state ast)]
+    (when (seq rem)
+      (schedule-read! app rem))
+    (ui-swap! app id #(assoc % :rem rem))))
+
+(defn- ui-sync! [app id]
+  (ui-sync-loc! app id)
+  (ui-sync-rem! app id))
+
 (defn- ui-reg! [app id ui]
   (ui-reset! app id ui))
 
@@ -117,7 +190,8 @@
       (ui-unsub! app id attr))
     (doseq [attr attrs*]
       (ui-sub! app id attr))
-    (ui-swap! app id #(assoc % :ast ast :attrs attrs*))))
+    (ui-swap! app id #(assoc % :ast ast :attrs attrs*))
+    (ui-sync! app id)))
 
 (defn- ui-unreg! [app id]
   (let [{:keys [attrs]} (ui-state app id)]
@@ -126,8 +200,8 @@
     (ui-forget! app id)))
 
 (defn- ui-render [app id]
-  (let [{:keys [ast render]} (ui-state app id)]
-    ))
+  (let [{:keys [loc render]} (ui-state app id)]
+    (render loc)))
 
 (defn- ui-render! [app id]
   (let [{:keys [render!]} (ui-state app id)]
@@ -149,6 +223,26 @@
     (vswap! state assoc :remlok/sync {:scheduled? false
                                       :reads []
                                       :muts []})))
+
+;; TODO use goog nextTick
+(defn- schedule-sync! [app]
+  (let [{:keys [sync]} app
+        {:keys [scheduled?]} @sync]
+    (when-not scheduled?
+      (vswap! sync assoc :scheduled? true)
+      (js/setTimeout
+        #(sync! app)
+        0))))
+
+(defn- schedule-read! [app ast]
+  (let [{:keys [state]} app]
+    (vswap! state update-in [:remlok/sync :reads] conj ast)
+    (schedule-sync! app)))
+
+(defn- schedule-mut! [app ast]
+  (let [{:keys [state]} app]
+    (vswap! state update-in [:remlok/sync :muts] conj ast)
+    (schedule-sync! app)))
 
 ;;;;;;;;;
 ;; App ;;
