@@ -74,52 +74,64 @@
 ;; Read/Mut ;;
 ;;;;;;;;;;;;;;
 
-(defn- read-loc [readf ctx ast]
-  (let [read* #(read-loc readf %1 %2)
-        ctx (assoc ctx :read read*)]
-    (not-empty
-      (into
-        {}
-        (comp
-          (map #(when-let [r (get (readf ctx %) :loc)]
-                 [(get % :attr) r]))
-          (filter some?))
-        ast))))
+(defn- read-loc* [readf ctx ast]
+  (not-empty
+    (into
+      {}
+      (comp
+        (map #(when-let [r (get (readf ctx %) :loc)]
+               [(get % :attr) r]))
+        (filter some?))
+      ast)))
 
-(defn- read-rem [readf ctx ast]
-  (let [read* #(read-rem readf %1 %2)
-        ctx (assoc ctx :read read*)]
-    (not-empty
-      (into
-        []
-        (comp
-          (map #(get (readf ctx %) :rem))
-          (filter some?))
-        ast))))
+(defn- read-loc [f ctx ast]
+  (let [f* #(read-loc* f %1 %2)
+        ctx* (assoc ctx :read f*)]
+    (f* ctx* ast)))
 
-(defn- mut-loc [mutf ctx ast]
-  (let [mut* #(mut-loc mutf %1 %2)
-        ctx (assoc ctx :mut mut*)]
-    (let [fs (into
-               []
-               (comp
-                 (map #(get (mutf ctx %) :loc))
-                 (filter some?))
-               ast)]
-      (fn []
-        (doseq [f fs]
-          (f))))))
+(defn- read-rem* [readf ctx ast]
+  (not-empty
+    (into
+      []
+      (comp
+        (map #(get (readf ctx %) :rem))
+        (filter some?))
+      ast)))
 
-(defn- mut-rem [mutf ctx ast]
-  (let [mut* #(mut-rem mutf %1 %2)
-        ctx (assoc ctx :mut mut*)]
-    (not-empty
-      (into
-        []
-        (comp
-          (map #(get (mutf ctx %) :rem))
-          (filter some?))
-        ast))))
+(defn- read-rem [f ctx ast]
+  (let [f* #(read-rem* f %1 %2)
+        ctx* (assoc ctx :read f*)]
+    (f* ctx* ast)))
+
+(defn- mut-loc* [mutf ctx ast]
+  (let [fs (into
+             []
+             (comp
+               (map #(get (mutf ctx %) :loc))
+               (filter some?))
+             ast)]
+    (fn []
+      (doseq [f fs]
+        (f)))))
+
+(defn- mut-loc [f ctx ast]
+  (let [f* #(mut-loc* f %1 %2)
+        ctx* (assoc ctx :mut f*)]
+    (f* ctx* ast)))
+
+(defn- mut-rem* [mutf ctx ast]
+  (not-empty
+    (into
+      []
+      (comp
+        (map #(get (mutf ctx %) :rem))
+        (filter some?))
+      ast)))
+
+(defn- mut-rem [f ctx ast]
+  (let [f* #(mut-rem* f %1 %2)
+        ctx* (assoc ctx :mut f*)]
+    (f* ctx* ast)))
 
 ;;;;;;;;;;;;;;;;;;;
 ;; Query Helpers ;;
@@ -139,38 +151,40 @@
 
 (defn- ui-state [app id]
   (let [{:keys [state]} app]
-    (get-in @state [:remlok/ui :ui->state id])))
+    (get-in @state [:ui :ui->state id])))
 
 (defn- ui-swap! [app id f]
   (let [{:keys [state]} app]
-    (vswap! state update-in [:remlok/ui :ui->state id] f)))
+    (vswap! state update-in [:ui :ui->state id] f)))
 
 (defn- ui-reset! [app id st]
   (let [{:keys [state]} app]
-    (vswap! state assoc-in [:remlok/ui :ui->state id] st)))
+    (vswap! state assoc-in [:ui :ui->state id] st)))
 
 (defn- ui-forget! [app id]
   (let [{:keys [state]} app]
-    (vswap! state update-in [:remlok/ui :ui->state] dissoc id)))
+    (vswap! state update-in [:ui :ui->state] dissoc id)))
 
 (defn- ui-sub! [app id attr]
   (let [{:keys [state]} app]
-    (vswap! state update-in [:remlok/ui :attr->ui attr] (fnil conj #{}) id)))
+    (vswap! state update-in [:ui :attr->ui attr] (fnil conj #{}) id)))
 
 (defn- ui-unsub! [app id attr]
   (let [{:keys [state]} app]
-    (vswap! state update-in [:remlok/ui :attr->ui attr] disj id)
+    (vswap! state update-in [:ui :attr->ui attr] disj id)
     (when-not (seq
-                (get-in @state [:remlok/ui :attr->ui attr]))
-      (vswap! state update-in [:remlok/ui :attr->ui] dissoc attr))))
+                (get-in @state [:ui :attr->ui attr]))
+      (vswap! state update-in [:ui :attr->ui] dissoc attr))))
 
 (defn- ui-sync! [app id]
   (let [{:keys [state funs]} app
         {:keys [readf]} funs
+        {:keys [db]} @state
         {:keys [ast]} (ui-state app id)
-        loc (read-loc readf {:st state} ast)
+        ctx {:db db}
+        loc (read-loc readf ctx ast)
         rem (q/query->ast
-              (read-rem readf {:st state} ast))]
+              (read-rem readf ctx ast))]
     (when (seq rem)
       (schedule-read! app rem))
     (ui-swap! app id #(assoc % :loc loc :rem rem))))
@@ -179,8 +193,9 @@
   (let [{:keys [funs]} app
         {:keys [readf]} funs
         {:keys [ast]} (ui-state app id)
+        ctx {:db nil}
         rem (q/query->ast
-              (read-rem readf {:st nil} ast))]
+              (read-rem readf ctx ast))]
     (when (seq rem)
       (schedule-read! app rem))))
 
@@ -223,15 +238,15 @@
 (defn- sync! [app]
   (let [{:keys [state funs]} app
         {:keys [syncf]} funs
-        {:keys [reads muts]} (get @state :remlok/sync)
+        {:keys [reads muts]} (get @state :sync)
         sync (merge
                (when (seq reads) {:reads reads})
                (when (seq muts) {:muts muts}))]
     (when (seq sync)
       (syncf sync))
-    (vswap! state assoc :remlok/sync {:scheduled? false
-                                      :reads []
-                                      :muts []})))
+    (vswap! state assoc :sync {:scheduled? false
+                               :reads []
+                               :muts []})))
 
 ;; TODO use goog nextTick
 (defn- schedule-sync! [app]
@@ -245,12 +260,12 @@
 
 (defn- schedule-read! [app ast]
   (let [{:keys [state]} app]
-    (vswap! state update-in [:remlok/sync :reads] conj ast)
+    (vswap! state update-in [:sync :reads] conj ast)
     (schedule-sync! app)))
 
 (defn- schedule-mut! [app ast]
   (let [{:keys [state]} app]
-    (vswap! state update-in [:remlok/sync :muts] conj ast)
+    (vswap! state update-in [:sync :muts] conj ast)
     (schedule-sync! app)))
 
 ;;;;;;;;;
@@ -262,16 +277,16 @@
    :mutf (fn [_ _])
    :syncf (fn [_])})
 
+(def ^:private def-state
+  {:ui {:attr->ui {}
+        :ui->state {}}
+   :db nil
+   :sync {:scheduled? false
+          :reads []
+          :muts []}})
+
 (defn app [funs]
-  {:state (volatile!
-            {:remlok/ui
-             {:attr->ui {}
-              :ui->state {}}
-             :remlok/db {}
-             :remlok/sync
-             {:scheduled? false
-              :reads []
-              :muts []}})
+  {:state (volatile! def-state)
    :funs (merge def-funs funs)})
 
 (defn mount! [app com el]
