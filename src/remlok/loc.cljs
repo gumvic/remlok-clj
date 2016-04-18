@@ -1,6 +1,7 @@
 (ns remlok.loc
   (:refer-clojure :exclude [read])
   (:require
+    [clojure.zip :as zip]
     [rum.core :as rum]
     [sablono.core :refer-macros [html]]
     [remlok.query :as q]))
@@ -69,49 +70,46 @@
 ;; AST Helpers ;;
 ;;;;;;;;;;;;;;;;;
 
+(defn- query-zip [query]
+  (zip/zipper
+    #(or (vector? %) (map? %) (list? %))
+    seq
+    (fn [node children]
+      (cond
+        (vector? node) (vec children)
+        (map? node) (into {} children)
+        (seq? node) children))
+    query))
+
 (defn- arg? [x]
   (and
     (symbol? x)
     (= (first (name x)) \?)))
 
-(defn- arg-name [arg]
-  (subs (name arg) 1))
+(defn- arg->keyword [arg]
+  (keyword
+    (subs (name arg) 1)))
 
-(defn- coll-kv [x]
-  (cond
-    (map? x) x
-    (vector? x) (map-indexed #(vector %1 %2) x)
-    :else nil))
+;; TODO only replace in args
+(defn- query+args [query args]
+  (loop [loc (query-zip query)]
+    (if (zip/end? loc)
+      (zip/root loc)
+      (let [node (zip/node loc)
+            loc* (if (arg? node)
+                   (zip/replace loc (get args (arg->keyword node)))
+                   loc)]
+        (recur (zip/next loc*))))))
 
-(declare arg-paths)
+(defn- query->attrs [query]
+  (distinct
+    (reduce
+      (fn []
+        )
+      []
+      query)))
 
-(defn- args-arg-paths [path args]
-  (if (map? args)
-    (for [[i x] args
-          :when (arg? x)]
-      [(conj path i) (keyword (arg-name x))])
-    (when (arg? args)
-      [[path (keyword (arg-name args))]])))
-
-(defn- attr-arg-paths [path {:keys [query args]}]
-  (concat
-    (when args
-      (args-arg-paths (conj path :args) args))
-    (when query
-      (arg-paths (conj path :query) query))))
-
-(defn- arg-paths
-  ([ast]
-    (arg-paths [] ast))
-  ([path ast]
-   (mapcat
-     identity
-     (map-indexed
-       (fn [i attr]
-         (attr-arg-paths (conj path i) attr))
-       ast))))
-
-(defn- ast->attrs [ast]
+#_(defn- ast->attrs [ast]
   (distinct
     (reduce
       (fn [attrs {:keys [attr query]}]
@@ -120,16 +118,6 @@
           (conj attrs attr)))
       []
       ast)))
-
-(defn- ast->ast* [ast paths args]
-  (reduce
-    (fn [ast [path name]]
-      (let [arg (get args name ::not-found)]
-        (if (not= arg ::not-found)
-          (assoc-in ast path arg)
-          ast)))
-    ast
-    paths))
 
 (comment
   (pprint
@@ -150,13 +138,7 @@
 ;;;;;;;;
 
 (defn ui [ui]
-  (let [{:keys [query render]} ui
-        ast (q/query->ast query)
-        ui* {:ast ast
-             :paths (arg-paths ast)
-             :attrs (ast->attrs ast)
-             :render render}]
-    (rum-com ui*)))
+  (rum-com ui))
 
 ;;;;;;;;;;;;;;
 ;; Read/Mut ;;
@@ -305,7 +287,8 @@
 
 (defn args! [ui args]
   (let [{:keys [app id]} ui]
-    (ui-args! app id args)))
+    (ui-args! app id args)
+    (ui-render! app id)))
 
 (defn mut! [ui query]
   (let [ast (q/query->ast query)]))

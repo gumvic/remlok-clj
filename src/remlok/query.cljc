@@ -8,26 +8,26 @@
 
 (declare Query)
 
-(def Plain-Attr
+(def Plain-Node
   s/Keyword)
 
-(def Comp-Attr
-  {Plain-Attr (s/recursive #'Query)})
+(def Comp-Node
+  {Plain-Node (s/recursive #'Query)})
 
-(def Attr
-  (s/cond-pre Plain-Attr Comp-Attr))
+(def Node
+  (s/cond-pre Plain-Node Comp-Node))
 
-(def Par-Attr
-  [(s/one Attr "attr") (s/one s/Any "args")])
+(def Par-Node
+  [(s/one Node "attr") (s/one s/Any "args")])
 
-(def Fun-Attr
-  [(s/one s/Symbol "fun") (s/one Attr "attr") (s/one s/Any "args")])
+(def Fun-Node
+  [(s/one s/Symbol "fun") (s/one Node "attr") (s/one s/Any "args")])
 
 (def Query
   [(s/cond-pre
-     Attr
-     Par-Attr
-     Fun-Attr)])
+     Node
+     Par-Node
+     Fun-Node)])
 
 (def AST
   [{(s/required-key :attr) s/Keyword
@@ -83,3 +83,41 @@
 
 (defn ast->query [ast]
   (mapv ast->attr ast))
+
+(defn nodes [query]
+  query)
+
+(defn attr? [node]
+  (keyword? node))
+
+(defn pattr? [node]
+  (and
+    (list? node)
+    (= (count node) 2)))
+
+(defn join? [node]
+  (map? node))
+
+(defn call? [node]
+  (and
+    (list? node)
+    (= (count node) 3)))
+
+(defn attr [node]
+  (cond
+    (attr? node) node
+    (pattr? node) (recur (first node))
+    (join? node) (first (first node))
+    (call? node) (recur (second node))
+    :else nil))
+
+(defn args [node]
+  (cond
+    (pattr? node) (second node)
+    (call? node) (nth node 3)
+    :else nil))
+
+(defn subq [node]
+  (cond
+    (join? node) (second (first node))
+    :else nil))
