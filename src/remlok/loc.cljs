@@ -152,9 +152,8 @@
 (defn ui [ui]
   (let [{:keys [query render]} ui
         ast (q/query->ast query)
-        paths (arg-paths ast)
         ui* {:ast ast
-             :ast->ast* #(ast->ast* ast paths %)
+             :paths (arg-paths ast)
              :attrs (ast->attrs ast)
              :render render}]
     (rum-com ui*)))
@@ -284,8 +283,8 @@
     (ui-reset! app id st)))
 
 (defn- ui-args! [app id args]
-  (let [{:keys [ast]} (ui-state app id)
-        ast* (ast+args->ast* ast args)]
+  (let [{:keys [ast paths]} (ui-state app id)
+        ast* (ast->ast* ast paths args)]
     (ui-swap! app id #(assoc % :ast* ast*))
     (ui-sync! app id)))
 
