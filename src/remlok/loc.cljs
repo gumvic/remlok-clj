@@ -192,7 +192,7 @@
 (defn- mut-loc* [mutf ctx query]
   (let [loc (reduce
               (fn [{actions :actions attrs :attrs}
-                   {action* :action attrs* :attrs}]
+                   {action* :action attrs* :attrs :as foo}]
                 {:actions (conj actions (or action* identity))
                  :attrs (into attrs attrs*)})
               {:actions []
@@ -336,7 +336,7 @@
         {:keys [action attrs]} (mut-loc mutf ctx query)
         rem (mut-rem mutf ctx query)]
     (schedule-mut! app rem)
-    (vswap! state :update db action)
+    (vswap! state update :db action)
     (let [ids (distinct (mapcat #(ui-by-attr app %) attrs))]
       (doseq [id ids]
         (ui-sync-loc! app id)

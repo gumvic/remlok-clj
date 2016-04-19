@@ -1,7 +1,7 @@
 (ns remlok.playground.counter
   (:require
     [remlok.router :refer [route]]
-    [remlok.loc :refer [app ui]]))
+    [remlok.loc :refer [app ui mut!]]))
 
 (defmulti readf route)
 (defmethod readf :counter [{:keys [db]} _]
@@ -9,14 +9,23 @@
 (defmethod readf :default [_ _]
   nil)
 
+(defmulti mutf route)
+(defmethod mutf :inc [_ _]
+  {:loc
+   {:action inc
+    :attrs [:counter]}})
+
 (def root
   (ui
     {:query [:counter]
      :render
-     (fn [{:keys [counter]}]
-       [:span (str counter)])}))
+     (fn [{:keys [counter]} ui]
+       [:span
+        {:on-click #(mut! ui [:inc])}
+        (str counter)])}))
 
 (def main
   (app
     {:db 0
-     :readf readf}))
+     :readf readf
+     :mutf mutf}))
