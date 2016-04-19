@@ -110,19 +110,11 @@
       []
       (q/nodes query))))
 
-(comment
-  (pprint
-    (arg-paths
-      (q/query->ast '[(:foo ?bar)
-                      {:baz [(limit :bax {:from 0 :to ?to})]}])))
-  (let [q '[(:foo ?bar)
-            {:baz [(limit :bax {:from 0 :to ?to})]}]
-        ast (q/query->ast q)
-        paths (arg-paths ast)
-        args {:to 10}]
-    (pprint
-      (q/ast->query
-        (ast->ast* ast paths args)))))
+;; if attr in attrs, keep the node, without going deeper
+;; else if has query, recur; keep if not empty
+;; else - drop the node
+(defn- fat->query [query attrs]
+  )
 
 ;;;;;;;;
 ;; UI ;;
@@ -232,6 +224,12 @@
   (let [{:keys [state]} app]
     (get-in @state [:ui :attr->ui attr])))
 
+(defn- ui-by-attrs [app attrs]
+  (distinct
+    (mapcat
+      #(ui-by-attr app %)
+      attrs)))
+
 #_(defn- ui-sync! [app id]
   (let [{:keys [state]} app
         {:keys [db readf]} @state
@@ -257,12 +255,13 @@
     (schedule-read! app rem)))
 
 ;; TODO narrow rem to query
-(defn- ui-sync-fat! [app id query]
+(defn- ui-sync-fat! [app id attrs]
   (let [{:keys [state]} app
         {:keys [readf]} @state
         {:keys [query*]} (ui-state app id)
-        ctx {:db nil}
-        rem (read-rem readf ctx query*)]
+        rem (fat->query
+              (read-rem readf {:db nil} query*)
+              attrs)]
     (schedule-read! app rem)))
 
 (defn- ui-sync! [app id]
@@ -312,11 +311,10 @@
         rem (mut-rem mutf ctx query)]
     (schedule-mut! app rem)
     (vswap! state update :db action)
-    (let [ids (distinct (mapcat #(ui-by-attr app %) attrs))]
-      (doseq [id ids]
-        (ui-sync-loc! app id)
-        ;;(ui-sync-fat! app id)
-        (ui-render! app id)))))
+    (doseq [id (ui-by-attrs app attrs)]
+      (ui-sync-loc! app id)
+      (ui-sync-fat! app id attrs)
+      (ui-render! app id))))
 
 ;;;;;;;;;;
 ;; Sync ;;
@@ -328,8 +326,9 @@
         attrs (query->attrs query)
         db* (normf tree)]
     (vswap! state update :db mergef db*)
-    (doseq [attr attrs]
-      )))
+    (doseq [id (ui-by-attrs app attrs)]
+      (ui-sync-loc! app id)
+      (ui-render! app id))))
 
 (defn- sync! [app]
   (let [{:keys [state]} app
