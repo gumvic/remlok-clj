@@ -8,6 +8,8 @@
 
 ;; TODO comp name
 ;; TODO modularize (but how?)
+;; TODO upon mounting, comp renders twice
+;; TODO better name for fat->query
 
 ;;;;;;;;;;;;;;;;;;;;
 ;; React Wrappers ;;
@@ -111,23 +113,23 @@
       []
       query)))
 
-(declare fat->query)
+(declare fat-query+attrs)
 
-(defn- fat->node [node attrs]
+(defn- fat-node+attrs [node attrs]
   (let [{:keys [attr join] :as ast} (q/node->ast node)]
     (if (some #(= attr %) attrs)
       node
       (when join
-        (when-let [join* (fat->query join attrs)]
+        (when-let [join* (fat-query+attrs join attrs)]
           (q/ast->node
             (assoc ast :join join*)))))))
 
-(defn- fat->query [query attrs]
+(defn- fat-query+attrs [query attrs]
   (not-empty
     (into
       []
       (comp
-        (map #(fat->node % attrs))
+        (map #(fat-node+attrs % attrs))
         (filter some?))
       query)))
 
@@ -248,9 +250,10 @@
 (defn- ui-sync-loc! [app id]
   (let [{:keys [state]} app
         {:keys [db readf]} @state
-        {:keys [query*]} (ui-state app id)
+        {:keys [query* render!]} (ui-state app id)
         loc (read-loc readf {:db db} query*)]
-    (ui-swap! app id #(assoc % :loc loc))))
+    (ui-swap! app id #(assoc % :loc loc))
+    (render!)))
 
 (defn- ui-sync-rem! [app id]
   (let [{:keys [state]} app
@@ -259,17 +262,16 @@
         rem (read-rem readf {:db db} query*)]
     (schedule-read! app rem)))
 
-;; TODO narrow rem to query
 (defn- ui-sync-fat! [app id attrs]
   (let [{:keys [state]} app
         {:keys [readf]} @state
         {:keys [query*]} (ui-state app id)
-        rem (fat->query
+        rem (fat-query+attrs
               (read-rem readf {:db nil} query*)
               attrs)]
     (schedule-read! app rem)))
 
-(defn- ui-sync! [app id]
+#_(defn- ui-sync! [app id]
   (ui-sync-loc! app id)
   (ui-sync-rem! app id))
 
@@ -285,7 +287,8 @@
         args (merge old-args args)
         query* (query+args query args)]
     (ui-swap! app id #(assoc % :query* query*))
-    (ui-sync! app id)))
+    (ui-sync-loc! app id)
+    (ui-sync-rem! app id)))
 
 (defn- ui-unreg! [app id]
   (let [{:keys [attrs]} (ui-state app id)]
@@ -298,14 +301,13 @@
         ui {:app app :id id}]
     (render loc ui)))
 
-(defn- ui-render! [app id]
+#_(defn- ui-render! [app id]
   (let [{:keys [render!]} (ui-state app id)]
     (render!)))
 
 (defn args! [ui args]
   (let [{:keys [app id]} ui]
-    (ui-args! app id args)
-    (ui-render! app id)))
+    (ui-args! app id args)))
 
 (defn mut! [ui query]
   (let [{:keys [app]} ui
@@ -318,8 +320,7 @@
     (vswap! state update :db action)
     (doseq [id (ui-by-attrs app attrs)]
       (ui-sync-loc! app id)
-      (ui-sync-fat! app id attrs)
-      (ui-render! app id))))
+      (ui-sync-fat! app id attrs))))
 
 ;;;;;;;;;;
 ;; Sync ;;
@@ -332,8 +333,7 @@
         db* (normf tree)]
     (vswap! state update :db mergef db*)
     (doseq [id (ui-by-attrs app attrs)]
-      (ui-sync-loc! app id)
-      (ui-render! app id))))
+      (ui-sync-loc! app id))))
 
 (defn- sync! [app]
   (let [{:keys [state]} app
