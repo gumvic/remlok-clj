@@ -195,7 +195,7 @@
                    {action* :action attrs* :attrs}]
                 {:actions (conj actions (or action* identity))
                  :attrs (into attrs attrs*)})
-              {:actions [identity]
+              {:actions []
                :attrs []}
               (map
                 #(get (mutf ctx %) :loc)
@@ -253,7 +253,11 @@
                 (get-in @state [:ui :attr->ui attr]))
       (vswap! state update-in [:ui :attr->ui] dissoc attr))))
 
-(defn- ui-sync! [app id]
+(defn- ui-by-attr [app attr]
+  (let [{:keys [state]} app]
+    (get-in @state [:ui :attr->ui attr])))
+
+#_(defn- ui-sync! [app id]
   (let [{:keys [state]} app
         {:keys [db readf]} @state
         {:keys [query*]} (ui-state app id)
@@ -263,13 +267,32 @@
     (schedule-read! app rem)
     (ui-swap! app id #(assoc % :loc loc :rem rem))))
 
-(defn- ui-sync-fat! [app id]
+(defn- ui-sync-loc! [app id]
+  (let [{:keys [state]} app
+        {:keys [db readf]} @state
+        {:keys [query*]} (ui-state app id)
+        loc (read-loc readf {:db db} query*)]
+    (ui-swap! app id #(assoc % :loc loc))))
+
+(defn- ui-sync-rem! [app id]
+  (let [{:keys [state]} app
+        {:keys [db readf]} @state
+        {:keys [query*]} (ui-state app id)
+        rem (read-rem readf {:db db} query*)]
+    (schedule-read! app rem)))
+
+;; TODO narrow rem to query
+(defn- ui-sync-fat! [app id query]
   (let [{:keys [state]} app
         {:keys [readf]} @state
         {:keys [query*]} (ui-state app id)
         ctx {:db nil}
         rem (read-rem readf ctx query*)]
     (schedule-read! app rem)))
+
+(defn- ui-sync! [app id]
+  (ui-sync-loc! app id)
+  (ui-sync-rem! app id))
 
 (defn- ui-reg! [app id st]
   (let [{:keys [query]} st
@@ -310,10 +333,15 @@
         {:keys [state]} app
         {:keys [mutf db]} @state
         ctx {:db db}
-        loc (mut-loc mutf ctx query)
+        {:keys [action attrs]} (mut-loc mutf ctx query)
         rem (mut-rem mutf ctx query)]
     (schedule-mut! app rem)
-    (vswap! state :update db loc)))
+    (vswap! state :update db action)
+    (let [ids (distinct (mapcat #(ui-by-attr app %) attrs))]
+      (doseq [id ids]
+        (ui-sync-loc! app id)
+        ;;(ui-sync-fat! app id)
+        (ui-render! app id)))))
 
 ;;;;;;;;;;
 ;; Sync ;;
