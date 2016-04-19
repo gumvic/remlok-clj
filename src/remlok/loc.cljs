@@ -165,21 +165,48 @@
         ctx* (assoc ctx :read f*)]
     (f* ctx* query)))
 
-(defn- mut-loc* [mutf ctx query]
+#_(defn- mut-loc* [mutf ctx query]
   (let [fs (into
              []
              (comp
                (map #(get (mutf ctx %) :loc))
                (filter some?))
              (q/nodes query))]
-    (fn []
-      (doseq [f fs]
-        (f)))))
+    (fn [db]
+      (reduce #(%2 %1) db fs))))
+
+#_(defn- mut-loc* [mutf ctx query]
+  (let [loc (into
+              []
+              (comp
+                (map #(get (mutf ctx %) :loc))
+                (filter some?))
+              (q/nodes query))
+        actions (into [] (comp (map :action) (filter some?)) loc)
+        action (fn [db]
+              (reduce #(%2 %1) db actions))
+        attrs (into [] (comp (map :attrs) (filter some?)) loc)]
+    {:act action
+     :attrs attrs}))
+
+(defn- mut-loc* [mutf ctx query]
+  (let [loc (reduce
+              (fn [{actions :actions attrs :attrs}
+                   {action* :action attrs* :attrs}]
+                {:actions (conj actions (or action* identity))
+                 :attrs (into attrs attrs*)})
+              {:actions [identity]
+               :attrs []}
+              (map
+                #(get (mutf ctx %) :loc)
+                (q/nodes query)))
+        attrs (get loc :attrs)
+        action (fn [db] (reduce #(%2 %1) db (get loc :actions)))]
+    {:action action
+     :attrs attrs}))
 
 (defn- mut-loc [f ctx query]
-  (let [f* #(mut-loc* f %1 %2)
-        ctx* (assoc ctx :mut f*)]
-    (f* ctx* query)))
+  (mut-loc* f ctx query))
 
 (defn- mut-rem* [mutf ctx query]
   (not-empty
@@ -191,9 +218,7 @@
       (q/nodes query))))
 
 (defn- mut-rem [f ctx query]
-  (let [f* #(mut-rem* f %1 %2)
-        ctx* (assoc ctx :mut f*)]
-    (f* ctx* query)))
+  (mut-rem* f ctx query))
 
 ;;;;;;;;;;;;;;
 ;; UI State ;;
@@ -235,8 +260,7 @@
         ctx {:db db}
         loc (read-loc readf ctx query*)
         rem (read-rem readf ctx query*)]
-    (when rem
-      (schedule-read! app rem))
+    (schedule-read! app rem)
     (ui-swap! app id #(assoc % :loc loc :rem rem))))
 
 (defn- ui-sync-fat! [app id]
@@ -245,8 +269,7 @@
         {:keys [query*]} (ui-state app id)
         ctx {:db nil}
         rem (read-rem readf ctx query*)]
-    (when rem
-      (schedule-read! app rem))))
+    (schedule-read! app rem)))
 
 (defn- ui-reg! [app id st]
   (let [{:keys [query]} st
@@ -283,7 +306,14 @@
     (ui-render! app id)))
 
 (defn mut! [ui query]
-  )
+  (let [{:keys [app]} ui
+        {:keys [state]} app
+        {:keys [mutf db]} @state
+        ctx {:db db}
+        loc (mut-loc mutf ctx query)
+        rem (mut-rem mutf ctx query)]
+    (schedule-mut! app rem)
+    (vswap! state :update db loc)))
 
 ;;;;;;;;;;
 ;; Sync ;;
@@ -325,14 +355,16 @@
         0))))
 
 (defn- schedule-read! [app query]
-  (let [{:keys [state]} app]
-    (vswap! state update-in [:sync :reads] conj query)
-    (schedule-sync! app)))
+  (when (seq (q/nodes query))
+    (let [{:keys [state]} app]
+      (vswap! state update-in [:sync :reads] conj query)
+      (schedule-sync! app))))
 
 (defn- schedule-mut! [app query]
-  (let [{:keys [state]} app]
-    (vswap! state update-in [:sync :muts] conj query)
-    (schedule-sync! app)))
+  (when (seq (q/nodes query))
+    (let [{:keys [state]} app]
+      (vswap! state update-in [:sync :muts] conj query)
+      (schedule-sync! app))))
 
 ;;;;;;;;;
 ;; App ;;
