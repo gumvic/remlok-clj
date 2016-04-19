@@ -111,21 +111,19 @@
       []
       query)))
 
-;; if attr in attrs, keep the node, without going deeper
-;; else if has query, recur; keep if not empty
-;; else - drop the node
 (declare fat->query)
 
 (defn- fat->node [node attrs]
-  (let [attr (q/attr node)]
-    (if (some #(= node %) attrs)
+  (let [{:keys [attr join] :as ast} (q/node->ast node)]
+    (if (some #(= attr %) attrs)
       node
-      (when-let [join (q/join node)]
-        (when-let [q (fat->query (q/join node) attrs)]
-          )))))
+      (when join
+        (when-let [join* (fat->query join attrs)]
+          (q/ast->node
+            (assoc ast :join join*)))))))
 
 (defn- fat->query [query attrs]
-  #_(not-empty
+  (not-empty
     (into
       []
       (comp
