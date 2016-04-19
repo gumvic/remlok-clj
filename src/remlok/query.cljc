@@ -84,26 +84,113 @@
 #_(defn ast->query [ast]
   (mapv ast->attr ast))
 
-(defn nodes [query]
+(defn- attr->ast [attr]
+  (cond
+    (keyword? attr) {:attr attr}
+    (map? attr) (let [[attr join] (first attr)]
+                  {:attr attr
+                   :join join})
+    :else nil))
+
+(defn node->ast [node]
+  (cond
+    (and
+      (list? node) (= (count node) 2))
+    (let [[attr args] node]
+      (merge
+        (attr->ast attr)
+        {:args args}))
+    (and
+      (list? node) (= (count node) 3))
+    (let [[fun attr args] node]
+      (merge
+        (attr->ast attr)
+        {:fun fun
+         :args args}))
+    :else (attr->ast node)))
+
+(defn- ast->attr [ast]
+  (let [{:keys [attr join]} ast]
+    (if join
+      {attr join}
+      attr)))
+
+(defn ast->node [ast]
+  (let [{:keys [fun args]} ast
+        attr (ast->attr ast)]
+    (cond
+      fun `(~fun ~attr ~args)
+      args `(~attr ~args)
+      :else attr)))
+
+#_(defn nodes [query]
   query)
 
-(defn attr? [node]
+#_(defn- attr* [node]
+  (cond
+    (keyword? node) node
+    (map? node) (first (first node))
+    :else nil))
+
+#_(defn attr [node]
+  (cond
+    (and
+      (list? node) (= (count node) 2))
+    (attr* (first node))
+    (and
+      (list? node) (= (count node) 3))
+    (attr* (second node))
+    :else nil))
+
+#_(defn join* [node]
+  (cond
+    (map? node) (second (first node))
+    :else nil))
+
+#_(defn join [node]
+  (cond
+    (and
+      (list? node) (= (count node) 2))
+    (join* (first node))
+    (and
+      (list? node) (= (count node) 3))
+    (join* (second node))
+    :else nil))
+
+#_(defn fun [node]
+  (cond
+    (and
+      (list? node) (= (count node) 3))
+    (first node)
+    :else nil))
+
+#_(defn args [node]
+  (cond
+    (and
+      (list? node) (= (count node) 2))
+    (second node)
+    (and
+      (list? node) (= (count node) 3))
+    (nth node 3)
+    :else nil))
+
+#_(defn attr? [node]
   (keyword? node))
 
-(defn pattr? [node]
+#_(defn pattr? [node]
   (and
     (list? node)
     (= (count node) 2)))
 
-(defn join? [node]
+#_(defn join? [node]
   (map? node))
 
-(defn call? [node]
+#_(defn call? [node]
   (and
     (list? node)
     (= (count node) 3)))
 
-(defn attr [node]
+#_(defn attr [node]
   (cond
     (attr? node) node
     (pattr? node) (recur (first node))
@@ -111,18 +198,18 @@
     (call? node) (recur (second node))
     :else nil))
 
-(defn args [node]
+#_(defn args [node]
   (cond
     (pattr? node) (second node)
     (call? node) (nth node 3)
     :else nil))
 
-(defn subq [node]
+#_(defn join [node]
   (cond
     (join? node) (second (first node))
     :else nil))
 
-(defn fun [node]
+#_(defn fun [node]
   (cond
     (call? node) (first node)
     :else nil))

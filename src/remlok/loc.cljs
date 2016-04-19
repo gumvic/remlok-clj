@@ -104,17 +104,34 @@
   (distinct
     (reduce
       (fn [attrs node]
-        (if (q/join? node)
-          (into attrs (query->attrs (q/subq node)))
-          (conj attrs (q/attr node))))
+        (let [{:keys [attr join]} (q/node->ast node)]
+          (into
+            (conj attrs attr)
+            (when join (query->attrs join)))))
       []
-      (q/nodes query))))
+      query)))
 
 ;; if attr in attrs, keep the node, without going deeper
 ;; else if has query, recur; keep if not empty
 ;; else - drop the node
+(declare fat->query)
+
+(defn- fat->node [node attrs]
+  (let [attr (q/attr node)]
+    (if (some #(= node %) attrs)
+      node
+      (when-let [join (q/join node)]
+        (when-let [q (fat->query (q/join node) attrs)]
+          )))))
+
 (defn- fat->query [query attrs]
-  )
+  #_(not-empty
+    (into
+      []
+      (comp
+        (map #(fat->node % attrs))
+        (filter some?))
+      query)))
 
 ;;;;;;;;
 ;; UI ;;
@@ -133,9 +150,9 @@
       {}
       (comp
         (map #(when-let [r (get (readf ctx %) :loc)]
-               [(q/attr %) r]))
+               [(get (q/node->ast %) :attr) r]))
         (filter some?))
-      (q/nodes query))))
+      query)))
 
 (defn- read-loc [f ctx query]
   (let [f* #(read-loc* f %1 %2)
@@ -149,7 +166,7 @@
       (comp
         (map #(get (readf ctx %) :rem))
         (filter some?))
-      (q/nodes query))))
+      query)))
 
 (defn- read-rem [f ctx query]
   (let [f* #(read-rem* f %1 %2)
@@ -166,7 +183,7 @@
                :attrs []}
               (map
                 #(get (mutf ctx %) :loc)
-                (q/nodes query)))
+                query))
         attrs (get loc :attrs)
         action (fn [db] (reduce #(%2 %1) db (get loc :actions)))]
     {:action action
@@ -182,7 +199,7 @@
       (comp
         (map #(get (mutf ctx %) :rem))
         (filter some?))
-      (q/nodes query))))
+      query)))
 
 (defn- mut-rem [f ctx query]
   (mut-rem* f ctx query))
@@ -229,16 +246,6 @@
     (mapcat
       #(ui-by-attr app %)
       attrs)))
-
-#_(defn- ui-sync! [app id]
-  (let [{:keys [state]} app
-        {:keys [db readf]} @state
-        {:keys [query*]} (ui-state app id)
-        ctx {:db db}
-        loc (read-loc readf ctx query*)
-        rem (read-rem readf ctx query*)]
-    (schedule-read! app rem)
-    (ui-swap! app id #(assoc % :loc loc :rem rem))))
 
 (defn- ui-sync-loc! [app id]
   (let [{:keys [state]} app
@@ -357,13 +364,13 @@
         0))))
 
 (defn- schedule-read! [app query]
-  (when (seq (q/nodes query))
+  (when (seq query)
     (let [{:keys [state]} app]
       (vswap! state update-in [:sync :reads] conj query)
       (schedule-sync! app))))
 
 (defn- schedule-mut! [app query]
-  (when (seq (q/nodes query))
+  (when (seq query)
     (let [{:keys [state]} app]
       (vswap! state update-in [:sync :muts] conj query)
       (schedule-sync! app))))

@@ -3,6 +3,7 @@
     [remlok.query :as q]))
 
 (defn route [_ node]
-  (if-let [fun (q/fun node)]
-    `(~fun ~(q/attr node))
-    (q/attr node)))
+  (let [{:keys [attr fun]} (q/node->ast node)]
+    (if fun
+      `(~fun ~attr)
+      attr)))
