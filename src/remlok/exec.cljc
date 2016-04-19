@@ -54,11 +54,10 @@
         (filter some?))
       query)))
 
-(defn mut!
+(defn mut
   ([f ctx query]
    (mut! f ctx query nil))
   ([f ctx query rem]
    (if-not rem
-     (let [action (mut-loc f ctx query)]
-       (action))
+     (mut-loc f ctx query)
      (mut-rem f ctx query rem))))

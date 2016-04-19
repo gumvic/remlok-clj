@@ -1,10 +1,9 @@
 (ns remlok.loc
-  (:refer-clojure :exclude [read])
   (:require
-    [clojure.zip :as zip]
     [rum.core :as rum]
     [sablono.core :refer-macros [html]]
-    [remlok.query :as q]))
+    [remlok.exec :as exe]
+    [remlok.loc.impl.query :refer [query+args query+attrs query->attrs]]))
 
 ;; TODO comp name
 ;; TODO modularize (but how?)
@@ -67,142 +66,12 @@
          class
          {::args args ::app *app* ::ui ui})))))
 
-;;;;;;;;;;;;;;;;;;;
-;; Query Helpers ;;
-;;;;;;;;;;;;;;;;;;;
-
-(defn- query-zip [query]
-  (zip/zipper
-    #(or (vector? %) (map? %) (list? %))
-    seq
-    (fn [node children]
-      (cond
-        (vector? node) (vec children)
-        (map? node) (into {} children)
-        (seq? node) children))
-    query))
-
-(defn- arg? [x]
-  (and
-    (symbol? x)
-    (= (first (name x)) \?)))
-
-(defn- arg->keyword [arg]
-  (keyword
-    (subs (name arg) 1)))
-
-;; TODO only replace in args
-(defn- query+args [query args]
-  (loop [loc (query-zip query)]
-    (if (zip/end? loc)
-      (zip/root loc)
-      (let [node (zip/node loc)
-            loc* (if (arg? node)
-                   (zip/replace loc (get args (arg->keyword node)))
-                   loc)]
-        (recur (zip/next loc*))))))
-
-(defn- query->attrs [query]
-  (distinct
-    (reduce
-      (fn [attrs node]
-        (let [{:keys [attr join]} (q/node->ast node)]
-          (into
-            (conj attrs attr)
-            (when join (query->attrs join)))))
-      []
-      query)))
-
-(declare fat-query+attrs)
-
-(defn- fat-node+attrs [node attrs]
-  (let [{:keys [attr join] :as ast} (q/node->ast node)]
-    (if (some #(= attr %) attrs)
-      node
-      (when join
-        (when-let [join* (fat-query+attrs join attrs)]
-          (q/ast->node
-            (assoc ast :join join*)))))))
-
-(defn- fat-query+attrs [query attrs]
-  (not-empty
-    (into
-      []
-      (comp
-        (map #(fat-node+attrs % attrs))
-        (filter some?))
-      query)))
-
 ;;;;;;;;
 ;; UI ;;
 ;;;;;;;;
 
 (defn ui [ui]
   (rum-com ui))
-
-;;;;;;;;;;;;;;
-;; Read/Mut ;;
-;;;;;;;;;;;;;;
-
-(defn- read-loc* [readf ctx query]
-  (not-empty
-    (into
-      {}
-      (comp
-        (map #(when-let [r (get (readf ctx %) :loc)]
-               [(get (q/node->ast %) :attr) r]))
-        (filter some?))
-      query)))
-
-(defn- read-loc [f ctx query]
-  (let [f* #(read-loc* f %1 %2)
-        ctx* (assoc ctx :read f*)]
-    (f* ctx* query)))
-
-(defn- read-rem* [readf ctx query]
-  (not-empty
-    (into
-      []
-      (comp
-        (map #(get (readf ctx %) :rem))
-        (filter some?))
-      query)))
-
-(defn- read-rem [f ctx query]
-  (let [f* #(read-rem* f %1 %2)
-        ctx* (assoc ctx :read f*)]
-    (f* ctx* query)))
-
-(defn- mut-loc* [mutf ctx query]
-  (let [loc (reduce
-              (fn [{actions :actions attrs :attrs}
-                   {action* :action attrs* :attrs}]
-                {:actions (conj actions (or action* identity))
-                 :attrs (into attrs attrs*)})
-              {:actions []
-               :attrs []}
-              (map
-                #(get (mutf ctx %) :loc)
-                query))
-        attrs (get loc :attrs)
-        action (fn [db] (reduce #(%2 %1) db (get loc :actions)))]
-    {:action action
-     :attrs attrs}))
-
-(defn- mut-loc [f ctx query]
-  (mut-loc* f ctx query))
-
-(defn- mut-rem* [mutf ctx query]
-  (not-empty
-    (into
-      []
-      (comp
-        (map #(get (mutf ctx %) :rem))
-        (filter some?))
-      query)))
-
-(defn- mut-rem [f ctx query]
-  (mut-rem* f ctx query))
 
 ;;;;;;;;;;;;;;
 ;; UI State ;;
@@ -249,31 +118,31 @@
 
 (defn- ui-sync-loc! [app id]
   (let [{:keys [state]} app
-        {:keys [db readf]} @state
+        {:keys [readf]} @state
         {:keys [query* render!]} (ui-state app id)
-        loc (read-loc readf {:db db} query*)]
+        ctx {:st state}
+        loc (exe/read readf ctx query*)]
     (ui-swap! app id #(assoc % :loc loc))
     (render!)))
 
 (defn- ui-sync-rem! [app id]
   (let [{:keys [state]} app
-        {:keys [db readf]} @state
+        {:keys [readf]} @state
         {:keys [query*]} (ui-state app id)
-        rem (read-rem readf {:db db} query*)]
+        ctx {:st state}
+        rem (exe/read readf ctx query* :rem)]
     (schedule-read! app rem)))
 
 (defn- ui-sync-fat! [app id attrs]
   (let [{:keys [state]} app
-        {:keys [readf]} @state
+        {:keys [db readf]} @state
         {:keys [query*]} (ui-state app id)
-        rem (fat-query+attrs
-              (read-rem readf {:db nil} query*)
+        ctx {:st (vswap! state assoc :db nil)}
+        rem (query+attrs
+              (exe/read readf ctx query* :rem)
               attrs)]
+    (vswap! state assoc :db db)
     (schedule-read! app rem)))
-
-#_(defn- ui-sync! [app id]
-  (ui-sync-loc! app id)
-  (ui-sync-rem! app id))
 
 (defn- ui-reg! [app id st]
   (let [{:keys [query]} st
@@ -301,10 +170,6 @@
         ui {:app app :id id}]
     (render loc ui)))
 
-#_(defn- ui-render! [app id]
-  (let [{:keys [render!]} (ui-state app id)]
-    (render!)))
-
 (defn args! [ui args]
   (let [{:keys [app id]} ui]
     (ui-args! app id args)))
@@ -312,15 +177,15 @@
 (defn mut! [ui query]
   (let [{:keys [app]} ui
         {:keys [state]} app
-        {:keys [mutf db]} @state
-        ctx {:db db}
-        {:keys [action attrs]} (mut-loc mutf ctx query)
-        rem (mut-rem mutf ctx query)]
+        {:keys [mutf]} @state
+        ctx {:st state}
+        action! (exe/mut mutf ctx query)
+        rem (exe/mut mutf ctx query :rem)]
     (schedule-mut! app rem)
-    (vswap! state update :db action)
-    (doseq [id (ui-by-attrs app attrs)]
-      (ui-sync-loc! app id)
-      (ui-sync-fat! app id attrs))))
+    (let [attrs (action!)]
+      (doseq [id (ui-by-attrs app attrs)]
+        (ui-sync-loc! app id)
+        (ui-sync-fat! app id attrs)))))
 
 ;;;;;;;;;;
 ;; Sync ;;
