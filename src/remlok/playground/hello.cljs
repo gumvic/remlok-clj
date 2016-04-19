@@ -6,6 +6,7 @@
   (ui
     {:render
      (fn []
+       (println "Have I just rendered twice?")
        [:span "Hello !!!"])}))
 
 (def main

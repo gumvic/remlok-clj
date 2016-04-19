@@ -10,7 +10,7 @@
   nil)
 
 (defmulti mutf route)
-(defmethod mutf :inc [_ _]
+(defmethod mutf :inc [{:keys [db]} _]
   {:loc
    {:action inc
     :attrs [:counter]}})
@@ -20,6 +20,7 @@
     {:query [:counter]
      :render
      (fn [{:keys [counter]} ui]
+       (println "Have I just rendered twice?")
        [:span
         {:on-click #(mut! ui [:inc])}
         (str counter)])}))

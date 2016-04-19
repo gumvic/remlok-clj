@@ -6,7 +6,6 @@
     [sablono.core :refer-macros [html]]
     [remlok.query :as q]))
 
-;; TODO when comp mounts, it renders twice (must be handled on rum side)
 ;; TODO comp name
 ;; TODO modularize (but how?)
 
@@ -165,34 +164,10 @@
         ctx* (assoc ctx :read f*)]
     (f* ctx* query)))
 
-#_(defn- mut-loc* [mutf ctx query]
-  (let [fs (into
-             []
-             (comp
-               (map #(get (mutf ctx %) :loc))
-               (filter some?))
-             (q/nodes query))]
-    (fn [db]
-      (reduce #(%2 %1) db fs))))
-
-#_(defn- mut-loc* [mutf ctx query]
-  (let [loc (into
-              []
-              (comp
-                (map #(get (mutf ctx %) :loc))
-                (filter some?))
-              (q/nodes query))
-        actions (into [] (comp (map :action) (filter some?)) loc)
-        action (fn [db]
-              (reduce #(%2 %1) db actions))
-        attrs (into [] (comp (map :attrs) (filter some?)) loc)]
-    {:act action
-     :attrs attrs}))
-
 (defn- mut-loc* [mutf ctx query]
   (let [loc (reduce
               (fn [{actions :actions attrs :attrs}
-                   {action* :action attrs* :attrs :as foo}]
+                   {action* :action attrs* :attrs}]
                 {:actions (conj actions (or action* identity))
                  :attrs (into attrs attrs*)})
               {:actions []
