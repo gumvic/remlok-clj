@@ -117,31 +117,28 @@
       attrs)))
 
 (defn- ui-sync-loc! [app id]
-  (let [{:keys [state]} app
-        {:keys [readf]} @state
+  (let [{:keys [db readf]} app
         {:keys [query* render!]} (ui-state app id)
-        ctx {:st state}
+        ctx {:db db}
         loc (exe/read readf ctx query*)]
     (ui-swap! app id #(assoc % :loc loc))
     (render!)))
 
 (defn- ui-sync-rem! [app id]
-  (let [{:keys [state]} app
-        {:keys [readf]} @state
+  (let [{:keys [db readf]} app
         {:keys [query*]} (ui-state app id)
-        ctx {:st state}
+        ctx {:db db}
         rem (exe/read readf ctx query* :rem)]
     (schedule-read! app rem)))
 
 (defn- ui-sync-fat! [app id attrs]
-  (let [{:keys [state]} app
-        {:keys [db readf]} @state
+  (let [{:keys [readf]} app
         {:keys [query*]} (ui-state app id)
-        ctx {:st (vswap! state assoc :db nil)}
+        db* (volatile! nil)
+        ctx {:db db*}
         rem (query+attrs
               (exe/read readf ctx query* :rem)
               attrs)]
-    (vswap! state assoc :db db)
     (schedule-read! app rem)))
 
 (defn- ui-reg! [app id st]
@@ -176,9 +173,8 @@
 
 (defn mut! [ui query]
   (let [{:keys [app]} ui
-        {:keys [state]} app
-        {:keys [mutf]} @state
-        ctx {:st state}
+        {:keys [db mutf]} app
+        ctx {:db db}
         action! (exe/mut mutf ctx query)
         rem (exe/mut mutf ctx query :rem)]
     (schedule-mut! app rem)
@@ -192,18 +188,16 @@
 ;;;;;;;;;;
 
 (defn merge! [app query tree]
-  (let [{:keys [state]} app
-        {:keys [normf mergef]} @state
+  (let [{:keys [db normf mergef]} app
         attrs (query->attrs query)
         db* (normf tree)]
-    (vswap! state update :db mergef db*)
+    (vswap! db mergef db*)
     (doseq [id (ui-by-attrs app attrs)]
       (ui-sync-loc! app id))))
 
 (defn- sync! [app]
-  (let [{:keys [state]} app
-        {{:keys [reads muts]} :sync
-         syncf :syncf} @state
+  (let [{:keys [state syncf]} app
+        {{:keys [reads muts]} :sync} @state
         sync (merge
                (when (seq reads) {:reads reads})
                (when (seq muts) {:muts muts}))]
@@ -218,10 +212,10 @@
 
 ;; TODO use goog nextTick
 (defn- schedule-sync! [app]
-  (let [{:keys [sync]} app
-        {:keys [scheduled?]} @sync]
+  (let [{:keys [state]} app
+        {{:keys [scheduled?]} :sync} @state]
     (when-not scheduled?
-      (vswap! sync assoc :scheduled? true)
+      (vswap! state assoc-in [:sync :scheduled?] true)
       (js/setTimeout
         #(sync! app)
         0))))
@@ -242,23 +236,18 @@
 ;; App ;;
 ;;;;;;;;;
 
-(def ^:private def-state
-  {:ui {:attr->ui {}
-        :ui->state {}}
-   :db nil
-   :sync {:scheduled? false
-          :reads []
-          :muts []}
-   :readf (fn [_ _])
+(def ^:private defuns
+  {:readf (fn [_ _])
    :mutf (fn [_ _])
    :syncf (fn [_])
    :normf identity
    :mergef merge})
 
-(defn app [state]
-  {:state
-   (volatile!
-     (merge def-state state))})
+(defn app [funs db]
+  (assoc
+    (merge defuns funs)
+    :db (volatile! db)
+    :state (volatile! nil)))
 
 (defn mount! [app com el]
   (binding [*app* app]

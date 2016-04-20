@@ -40,9 +40,10 @@
         attrs (apply
                 concat
                 (into [] (comp (map :attrs) (filter some?)) loc))
-        actions (into [] (comp (map :actions) (filter some?)) loc)]
-    #(doseq [action actions]
-      (action)
+        actions (into [] (comp (map :action) (filter some?)) loc)]
+    (fn []
+      (doseq [action actions]
+        (action))
       attrs)))
 
 (defn- mut-rem [f ctx query rem]
@@ -56,7 +57,7 @@
 
 (defn mut
   ([f ctx query]
-   (mut! f ctx query nil))
+   (mut f ctx query nil))
   ([f ctx query rem]
    (if-not rem
      (mut-loc f ctx query)

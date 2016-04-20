@@ -5,14 +5,14 @@
 
 (defmulti readf route)
 (defmethod readf :counter [{:keys [db]} _]
-  {:loc db})
+  {:loc @db})
 (defmethod readf :default [_ _]
   nil)
 
 (defmulti mutf route)
 (defmethod mutf :inc [{:keys [db]} _]
   {:loc
-   {:action inc
+   {:action #(vswap! db inc)
     :attrs [:counter]}})
 
 (def root
@@ -27,6 +27,6 @@
 
 (def main
   (app
-    {:db 0
-     :readf readf
-     :mutf mutf}))
+    {:readf readf
+     :mutf mutf}
+    0))
