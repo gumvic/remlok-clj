@@ -6,7 +6,8 @@
 
 (defmulti readf route)
 (defmethod readf :counter [{:keys [db]} _]
-  (let [[_ _ i] (db/read db '[:st :counter _])]
+  (let [[_ _ i] (first
+                  (db/read db '[:st :counter _]))]
     {:loc (or i 0)}))
 (defmethod readf :default [_ _]
   nil)
@@ -15,11 +16,7 @@
 (defmethod mutf :inc [_ _]
   {:loc
    {:mut (fn [db]
-           (let [[_ _ i] (db/read db '[:st :counter _])
-                 i* (if i (inc i) 0)
-                 db* (db/mut db [:st :counter i*])]
-             (println db*)
-             db*))
+           (db/mut db [:st :counter (fnil inc 0)]))
     :attrs [:counter]}})
 
 (def root

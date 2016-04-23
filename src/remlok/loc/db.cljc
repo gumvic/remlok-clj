@@ -6,6 +6,8 @@
  {:cardinality :one
   :type string?}}
 
+;; TODO cardinality (now it's always one)
+
 (defn- wildcard? [x]
   (= x '_))
 
@@ -73,9 +75,6 @@
           av))
       eav)))
 
-;; TODO cardinalty - if one, return one, else, vector or set
-;; perhaps if cardinality is one, return v
-;; otherwise, return a tree made out of the matched eav's
 (defn read [db query]
   (let [[e a v] query]
     (case [(wildcard? e)
@@ -91,21 +90,22 @@
       [true true true] (___ db e a v)
       nil)))
 
-;; TODO cardinality - if one, overwrite, if many, conj, but use sets, not vectors, perhaps
-#_(defn mut [db query]
-  (let [{:keys [eav aev ave vae]} db
-        [e a v] query
-        eav* (update-in eav [e a] (fnil conj []) v)
-        aev* (update-in aev [a e] (fnil conj []) v)
-        ave* (update-in ave [a v] (fnil conj []) e)
-        vae* (update-in vae [v a] (fnil conj []) e)]
-    (assoc db :eav eav* :aev aev* :ave ave* :vae vae*)))
+#_(defn eavs->tree [eavs]
+  (reduce
+    (fn [t [e a v]]
+      (assoc-in t [e a] v))
+    nil
+    eavs))
 
-;; perhaps if v from query is a function, use that functions to produce a new value
 (defn mut [db query]
-  (let [[e a v] query]
+  (let [[e a v] query
+        fv (if (fn? v)
+             #(if (seq %)
+               #{(v (first %))}
+               #{(v nil)})
+             #(constantly #{v}))]
     (-> db
-        (update-in [:eav e a] (fnil conj #{}) v)
-        (update-in [:aev a e] (fnil conj #{}) v)
+        (update-in [:eav e a] fv)
+        (update-in [:aev a e] fv)
         (update-in [:ave a v] (fnil conj #{}) e)
         (update-in [:vae v a] (fnil conj #{}) e))))
