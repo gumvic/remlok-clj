@@ -1,6 +1,11 @@
 (ns remlok.loc.db
   (:refer-clojure :exclude [read]))
 
+;; schema:
+{:user/name
+ {:cardinality :one
+  :type string?}}
+
 (defn- wildcard? [x]
   (= x '_))
 
@@ -68,7 +73,10 @@
           av))
       eav)))
 
-(defn- read* [db query]
+;; TODO cardinalty - if one, return one, else, vector or set
+;; perhaps if cardinality is one, return v
+;; otherwise, return a tree made out of the matched eav's
+(defn read [db query]
   (let [[e a v] query]
     (case [(wildcard? e)
            (wildcard? a)
@@ -83,7 +91,8 @@
       [true true true] (___ db e a v)
       nil)))
 
-(defn- mut* [db query]
+;; TODO cardinality - if one, overwrite, if many, conj, but use sets, not vectors, perhaps
+#_(defn mut [db query]
   (let [{:keys [eav aev ave vae]} db
         [e a v] query
         eav* (update-in eav [e a] (fnil conj []) v)
@@ -92,8 +101,11 @@
         vae* (update-in vae [v a] (fnil conj []) e)]
     (assoc db :eav eav* :aev aev* :ave ave* :vae vae*)))
 
-(defn read [st query]
-  (read* (get st :remlok/db) query))
-
-(defn mut! [st query]
-  (vswap! st update :remlok/db mut* query))
+;; perhaps if v from query is a function, use that functions to produce a new value
+(defn mut [db query]
+  (let [[e a v] query]
+    (-> db
+        (update-in [:eav e a] (fnil conj #{}) v)
+        (update-in [:aev a e] (fnil conj #{}) v)
+        (update-in [:ave a v] (fnil conj #{}) e)
+        (update-in [:vae v a] (fnil conj #{}) e))))

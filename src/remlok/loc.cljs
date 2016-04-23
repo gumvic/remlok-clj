@@ -117,27 +117,25 @@
       attrs)))
 
 (defn- ui-sync-loc! [app id]
-  (let [{:keys [db readf]} app
+  (let [{:keys [state readf]} app
+        {:keys [db]} @state
         {:keys [query* render!]} (ui-state app id)
-        ctx {:db db}
-        loc (exe/read readf ctx query*)]
+        loc (exe/read readf {:db db} query*)]
     (ui-swap! app id #(assoc % :loc loc))
     (render!)))
 
 (defn- ui-sync-rem! [app id]
-  (let [{:keys [db readf]} app
+  (let [{:keys [state readf]} app
+        {:keys [db]} @state
         {:keys [query*]} (ui-state app id)
-        ctx {:db db}
-        rem (exe/read readf ctx query* :rem)]
+        rem (exe/read readf {:db db} query* :rem)]
     (schedule-read! app rem)))
 
 (defn- ui-sync-fat! [app id attrs]
   (let [{:keys [readf]} app
         {:keys [query*]} (ui-state app id)
-        db* (volatile! nil)
-        ctx {:db db*}
         rem (query+attrs
-              (exe/read readf ctx query* :rem)
+              (exe/read readf {:db nil} query* :rem)
               attrs)]
     (schedule-read! app rem)))
 
@@ -173,15 +171,15 @@
 
 (defn mut! [ui query]
   (let [{:keys [app]} ui
-        {:keys [db mutf]} app
-        ctx {:db db}
-        action! (exe/mut mutf ctx query)
-        rem (exe/mut mutf ctx query :rem)]
+        {:keys [state mutf]} app
+        {:keys [db]} @state
+        {:keys [attrs mut]} (exe/mut mutf {:db db} query)
+        rem (exe/mut mutf {:db db} query :rem)]
     (schedule-mut! app rem)
-    (let [attrs (action!)]
-      (doseq [id (ui-by-attrs app attrs)]
-        (ui-sync-loc! app id)
-        (ui-sync-fat! app id attrs)))))
+    (vswap! state update :db mut)
+    (doseq [id (ui-by-attrs app attrs)]
+      (ui-sync-loc! app id)
+      (ui-sync-fat! app id attrs))))
 
 ;;;;;;;;;;
 ;; Sync ;;
@@ -243,10 +241,9 @@
    :normf identity
    :mergef merge})
 
-(defn app [funs db]
+(defn app [funs]
   (assoc
     (merge defuns funs)
-    :db (volatile! db)
     :state (volatile! nil)))
 
 (defn mount! [app com el]
