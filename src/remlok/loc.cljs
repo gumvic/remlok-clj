@@ -9,7 +9,6 @@
 ;; TODO comp name
 ;; TODO modularize (but how?)
 ;; TODO upon mounting, comp renders twice
-;; TODO better name for fat->query
 
 ;;;;;;;;;;;;;;;;;;;;
 ;; React Wrappers ;;
