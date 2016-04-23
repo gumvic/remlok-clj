@@ -15,9 +15,7 @@
 (defmulti mutf route)
 (defmethod mutf :inc [_ _]
   {:loc
-   {:mut (fn [db]
-           (db/mut db [:st :counter (fnil inc 0)]))
-    :attrs [:counter]}})
+   [[:st :counter (fnil inc 0)]]})
 
 (def root
   (ui

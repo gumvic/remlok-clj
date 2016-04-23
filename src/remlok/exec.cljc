@@ -33,7 +33,7 @@
            ctx* (assoc ctx :read read*)]
        (read* ctx* query)))))
 
-(defn- mut-loc [f ctx query]
+#_(defn- mut-loc [f ctx query]
   (let [loc (filter
               some?
               (map #(get (f ctx %) :loc) query))
@@ -43,6 +43,11 @@
         muts (into [] (comp (map :mut) (filter some?)) loc)]
     {:attrs attrs
      :mut (fn [db] (reduce #(%2 %1) db muts))}))
+
+(defn- mut-loc [f ctx query]
+  (mapcat
+    #(get (f ctx %) :loc)
+    query))
 
 (defn- mut-rem [f ctx query rem]
   (not-empty

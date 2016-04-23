@@ -8,6 +8,12 @@
 
 ;; TODO cardinality (now it's always one)
 
+(def ^:private ^:dynamic *attrs*)
+
+(defn- track-attr! [attr]
+  (when (bound? #'*attrs*)
+    (vswap! *attrs* conj attr)))
+
 (defn- wildcard? [x]
   (= x '_))
 
@@ -109,3 +115,9 @@
         (update-in [:aev a e] fv)
         (update-in [:ave a v] (fnil conj #{}) e)
         (update-in [:vae v a] (fnil conj #{}) e))))
+
+(defn track [f & args]
+  (binding [*attrs* (volatile! #{})]
+    (let [res (apply f args)]
+      {:attrs @*attrs*
+       :res res})))

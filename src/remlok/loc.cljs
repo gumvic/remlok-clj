@@ -3,7 +3,8 @@
     [rum.core :as rum]
     [sablono.core :refer-macros [html]]
     [remlok.exec :as exe]
-    [remlok.loc.impl.query :refer [query+args query+attrs query->attrs]]))
+    [remlok.loc.impl.query :refer [query+args query+attrs query->attrs]]
+    [remlok.loc.db :as db]))
 
 ;; TODO comp name
 ;; TODO modularize (but how?)
@@ -173,10 +174,11 @@
   (let [{:keys [app]} ui
         {:keys [state mutf]} app
         {:keys [db]} @state
-        {:keys [attrs mut]} (exe/mut mutf {:db db} query)
-        rem (exe/mut mutf {:db db} query :rem)]
+        loc (exe/mut mutf {:db db} query)
+        rem (exe/mut mutf {:db db} query :rem)
+        attrs (into #{} (map second) loc)]
     (schedule-mut! app rem)
-    (vswap! state update :db mut)
+    (vswap! state update :db #(reduce db/mut % loc))
     (doseq [id (ui-by-attrs app attrs)]
       (ui-sync-loc! app id)
       (ui-sync-fat! app id attrs))))
