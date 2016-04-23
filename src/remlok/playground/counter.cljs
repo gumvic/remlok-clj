@@ -1,13 +1,12 @@
 (ns remlok.playground.counter
   (:require
     [remlok.router :refer [route]]
-    [remlok.loc :refer [app ui mut!]]
-    [remlok.loc.db :as db]))
+    [remlok.loc :refer [app ui mut!]]))
 
 (defmulti readf route)
 (defmethod readf :counter [{:keys [db]} _]
   (let [[_ _ i] (first
-                  (db/read db '[:st :counter _]))]
+                  (db '[:st :counter _]))]
     {:loc (or i 0)}))
 (defmethod readf :default [_ _]
   nil)

@@ -120,7 +120,7 @@
   (let [{:keys [state readf]} app
         {:keys [db]} @state
         {:keys [query* render!]} (ui-state app id)
-        loc (exe/read readf {:db db} query*)]
+        loc (exe/read readf {:db #(db/read db %)} query*)]
     (ui-swap! app id #(assoc % :loc loc))
     (render!)))
 
@@ -128,14 +128,14 @@
   (let [{:keys [state readf]} app
         {:keys [db]} @state
         {:keys [query*]} (ui-state app id)
-        rem (exe/read readf {:db db} query* :rem)]
+        rem (exe/read readf {:db #(db/read db %)} query* :rem)]
     (schedule-read! app rem)))
 
 (defn- ui-sync-fat! [app id attrs]
   (let [{:keys [readf]} app
         {:keys [query*]} (ui-state app id)
         rem (query+attrs
-              (exe/read readf {:db nil} query* :rem)
+              (exe/read readf {:db (constantly nil)} query* :rem)
               attrs)]
     (schedule-read! app rem)))
 
@@ -173,8 +173,8 @@
   (let [{:keys [app]} ui
         {:keys [state mutf]} app
         {:keys [db]} @state
-        loc (exe/mut mutf {:db db} query)
-        rem (exe/mut mutf {:db db} query :rem)
+        loc (exe/mut mutf {:db #(db/read db %)} query)
+        rem (exe/mut mutf {:db #(db/read db %)} query :rem)
         attrs (into #{} (map second) loc)]
     (schedule-mut! app rem)
     (vswap! state update :db #(reduce db/mut % loc))
