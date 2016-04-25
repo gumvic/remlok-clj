@@ -4,7 +4,7 @@
     [sablono.core :refer-macros [html]]
     [remlok.exec :as exe]
     [remlok.loc.impl.query :refer [query+args query+attrs query->attrs]]
-    [remlok.loc.db :as db]))
+    [remlok.loc.impl.db :as db]))
 
 ;; TODO comp name
 ;; TODO modularize (but how?)

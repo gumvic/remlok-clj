@@ -14,7 +14,7 @@
 (defmulti mutf route)
 (defmethod mutf :inc [_ _]
   {:loc
-   [[:st :counter (fnil inc 0)]]})
+   [[:st :counter (fnil #(map inc %) [0])]]})
 
 (def root
   (ui

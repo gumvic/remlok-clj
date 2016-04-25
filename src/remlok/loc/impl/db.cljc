@@ -97,15 +97,27 @@
       nil
       eavs))
 
-(defn mut [db query]
-  (let [[e a v] query
-        fv (if (fn? v)
-             #(if (seq %)
-               #{(v (first %))}
-               #{(v nil)})
-             #(constantly #{v}))]
+(defn add [db query]
+  (let [[e a v] query]
     (-> db
-        (update-in [:eav e a] fv)
-        (update-in [:aev a e] fv)
+        (update-in [:eav e a] (fnil conj #{}) v)
+        (update-in [:aev a e] (fnil conj #{}) v)
         (update-in [:ave a v] (fnil conj #{}) e)
         (update-in [:vae v a] (fnil conj #{}) e))))
+
+;; TODO dissoc-in empty
+(defn del [db query]
+  (let [[e a v] query]
+    (-> db
+        (update-in [:eav e a] disj v)
+        (update-in [:aev a e] disj v)
+        (update-in [:ave a v] disj e)
+        (update-in [:vae v a] disj e))))
+
+(defn mut [db query]
+  (let [[e a f] query
+        vs (get-in db [:eav e a])
+        vs* (f vs)]
+    (as-> db $
+          (reduce del $ (for [v vs] [e a v]))
+          (reduce add $ (for [v vs*] [e a v])))))
