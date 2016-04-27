@@ -121,3 +121,6 @@
     (as-> db $
           (reduce del $ (for [v vs] [e a v]))
           (reduce add $ (for [v vs*] [e a v])))))
+
+(defn tree->db [tree]
+  )
