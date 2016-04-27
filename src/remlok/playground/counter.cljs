@@ -1,15 +1,26 @@
 (ns remlok.playground.counter
   (:require
-    [remlok.loc :refer [pub sub]]))
+    [remlok.loc :refer [pub sub hub msg]]
+    [remlok.router :refer [route]]))
 
-(pub
-  :counter
-  (fn [{:keys [db]} _]
-    @db))
+(defmulti res route)
+(defmethod res :counter [{:keys [db]} _]
+  @db)
+(defmethod res :default [_ _]
+  nil)
+
+(defmulti trans route)
+(defmethod trans :inc [db _]
+  (inc db))
+(defmethod trans :default [db _]
+  db)
+
+(pub res)
+(hub trans)
 
 (defn root []
-  (let [{:keys [counter]} @(sub [:counter])]
+  (let [counter (sub [:counter])]
     (fn []
       [:span
-       {:on-click #()}
-       "Click here: " (str counter)])))
+       {:on-click #(msg :inc)}
+       "Click here: " (str (get @counter :counter))])))

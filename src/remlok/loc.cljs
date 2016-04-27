@@ -7,21 +7,29 @@
 (def ^:private db
   (r/atom nil))
 
-(def ^:private pubs
-  (atom nil))
+(def ^:private funs
+  (atom
+    {:resf (fn [_ _])
+     :transf (fn [db _] db)}))
 
-(defn pub [attr fun]
-  (swap! pubs assoc attr fun))
+#_(defn resf [f]
+  (swap! funs assoc :resf f))
 
-(defn- res [attr]
+#_(defn msgf [f]
+  (swap! funs assoc :msgf f))
+
+#_(defn- res [attr]
   (->> (constantly nil)
        (get @pubs :default)
        (get @pubs attr)))
 
+(defn pub [f]
+  (swap! funs assoc :resf f))
+
 (defn- res-node [ctx node]
-  (let [{:keys [attr]} (q/node->ast node)
-        res (res attr)]
-    (when-let [val (res ctx node)]
+  (let [{:keys [resf]} @funs
+        {:keys [attr]} (q/node->ast node)]
+    (when-let [val (resf ctx node)]
       [attr val])))
 
 (defn- res-query [ctx query]
@@ -40,11 +48,12 @@
    (reaction
      (res-query ctx query))))
 
-(defn hub [fun]
-  )
+(defn hub [f]
+  (swap! funs assoc :transf f))
 
-(defn disp [msg]
-  )
+(defn msg [msg]
+  (let [{:keys [transf]} @funs]
+    (swap! db transf msg)))
 
 ;;;;;;;;;;
 ;; Sync ;;
