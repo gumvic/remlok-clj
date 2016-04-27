@@ -1,4 +1,5 @@
 (ns remlok.loc
+  (:refer-clojure :exclude [read])
   (:require
     [reagent.core :as r]
     [reagent.ratom :refer-macros [reaction]]
@@ -9,39 +10,39 @@
 
 (def ^:private funs
   (atom
-    {:resf (fn [_ _])
-     :transf (fn [db _] db)}))
+    {:readf (fn [_ _])
+     :mutf (fn [db _] db)}))
 
-(defn pub [f]
-  (swap! funs assoc :resf f))
+(defn readf! [f]
+  (swap! funs assoc :readf f))
 
-(defn- res-node [node ctx]
-  (let [{:keys [resf]} @funs
+(defn- read-node [ctx node]
+  (let [{:keys [readf]} @funs
         {:keys [attr]} (q/node->ast node)]
-    (when-let [val (resf db node ctx)]
+    (when-let [val (readf db node ctx)]
       [attr val])))
 
-(defn- res-query [query ctx]
+(defn- read-query [ctx query]
   (not-empty
     (into
       {}
       (comp
-        (map #(res-node % ctx))
+        (map #(read-node ctx %))
         (filter some?))
       query)))
 
-(defn sub
+(defn read
   ([query]
-    (sub query nil))
-  ([query ctx]
+    (read {:db db} query))
+  ([ctx query]
    (reaction
-     (res-query query ctx))))
+     (read-query ctx query))))
 
-(defn hub [f]
-  (swap! funs assoc :transf f))
+(defn mutf! [f]
+  (swap! funs assoc :mutf f))
 
-(defn msg [msg]
-  (let [{:keys [transf]} @funs]
+(defn mut! [query]
+  #_(let [{:keys [transf]} @funs]
     (swap! db transf msg)))
 
 ;;;;;;;;;;
