@@ -7,9 +7,8 @@
                  [org.clojure/clojurescript "1.7.228"]
                  [org.clojure/core.async "0.2.374"]
                  [com.cognitect/transit-clj "0.8.285"]
-                 [funcool/promesa "0.8.1"]
-                 [rum "0.6.0"]
-                 [prismatic/schema "1.1.0"]]
+                 [prismatic/schema "1.1.0"]
+                 [reagent "0.5.1"]]
   :plugins [[lein-cljsbuild "1.1.2"]]
   :cljsbuild
   {:builds

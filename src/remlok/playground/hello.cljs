@@ -1,13 +1,5 @@
-(ns remlok.playground.hello
-  (:require
-    [remlok.loc :refer [app ui]]))
+(ns remlok.playground.hello)
 
-(def root
-  (ui
-    {:render
-     (fn []
-       (println "Have I just rendered twice?")
-       [:span "Hello !!!"])}))
-
-(def main
-  (app {}))
+(defn root []
+  (println "Have I just rendered twice?")
+  [:span "Hello !!!"])
