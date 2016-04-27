@@ -34,7 +34,7 @@
                    loc)]
         (recur (zip/next loc*))))))
 
-(defn query->attrs [query]
+#_(defn query->attrs [query]
   (distinct
     (reduce
       (fn [attrs node]
@@ -45,9 +45,9 @@
       []
       query)))
 
-(declare query+attrs)
+#_(declare query+attrs)
 
-(defn- node+attrs [node attrs]
+#_(defn- node+attrs [node attrs]
   (let [{:keys [attr join] :as ast} (q/node->ast node)]
     (if (some #(= attr %) attrs)
       node
@@ -56,7 +56,7 @@
           (q/ast->node
             (assoc ast :join join*)))))))
 
-(defn query+attrs [query attrs]
+#_(defn query+attrs [query attrs]
   (not-empty
     (into
       []

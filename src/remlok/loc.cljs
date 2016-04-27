@@ -2,9 +2,7 @@
   (:require
     [rum.core :as rum]
     [sablono.core :refer-macros [html]]
-    [remlok.exec :as exe]
-    [remlok.loc.impl.query :refer [query+args query+attrs query->attrs]]
-    [remlok.loc.impl.db :as db]))
+    [remlok.loc.impl.query :refer [query+args]]))
 
 ;; TODO comp name
 ;; TODO modularize (but how?)
@@ -95,28 +93,28 @@
   (let [{:keys [state]} app]
     (vswap! state update-in [:ui :ui->state] dissoc id)))
 
-(defn- ui-sub! [app id attr]
+#_(defn- ui-sub! [app id attr]
   (let [{:keys [state]} app]
     (vswap! state update-in [:ui :attr->ui attr] (fnil conj #{}) id)))
 
-(defn- ui-unsub! [app id attr]
+#_(defn- ui-unsub! [app id attr]
   (let [{:keys [state]} app]
     (vswap! state update-in [:ui :attr->ui attr] disj id)
     (when-not (seq
                 (get-in @state [:ui :attr->ui attr]))
       (vswap! state update-in [:ui :attr->ui] dissoc attr))))
 
-(defn- ui-by-attr [app attr]
+#_(defn- ui-by-attr [app attr]
   (let [{:keys [state]} app]
     (get-in @state [:ui :attr->ui attr])))
 
-(defn- ui-by-attrs [app attrs]
+#_(defn- ui-by-attrs [app attrs]
   (distinct
     (mapcat
       #(ui-by-attr app %)
       attrs)))
 
-(defn- ui-sync-loc! [app id]
+#_(defn- ui-sync-loc! [app id]
   (let [{:keys [state readf]} app
         {:keys [db]} @state
         {:keys [query* render!]} (ui-state app id)
@@ -124,14 +122,14 @@
     (ui-swap! app id #(assoc % :loc loc))
     (render!)))
 
-(defn- ui-sync-rem! [app id]
+#_(defn- ui-sync-rem! [app id]
   (let [{:keys [state readf]} app
         {:keys [db]} @state
         {:keys [query*]} (ui-state app id)
         rem (exe/read readf {:db #(db/read db %)} query* :rem)]
     (schedule-read! app rem)))
 
-(defn- ui-sync-fat! [app id attrs]
+#_(defn- ui-sync-fat! [app id attrs]
   (let [{:keys [readf]} app
         {:keys [query*]} (ui-state app id)
         rem (query+attrs
@@ -139,14 +137,14 @@
               attrs)]
     (schedule-read! app rem)))
 
-(defn- ui-reg! [app id st]
+#_(defn- ui-reg! [app id st]
   (let [{:keys [query]} st
         attrs (query->attrs query)]
     (doseq [attr attrs]
       (ui-sub! app id attr))
     (ui-reset! app id st)))
 
-(defn- ui-args! [app id args]
+#_(defn- ui-args! [app id args]
   (let [{query :query old-args :args} (ui-state app id)
         args (merge old-args args)
         query* (query+args query args)]
@@ -154,11 +152,13 @@
     (ui-sync-loc! app id)
     (ui-sync-rem! app id)))
 
-(defn- ui-unreg! [app id]
+#_(defn- ui-unreg! [app id]
   (let [{:keys [attrs]} (ui-state app id)]
     (doseq [attr attrs]
       (ui-unsub! app id attr))
     (ui-forget! app id)))
+
+
 
 (defn- ui-render [app id]
   (let [{:keys [loc render]} (ui-state app id)
@@ -169,7 +169,7 @@
   (let [{:keys [app id]} ui]
     (ui-args! app id args)))
 
-(defn mut! [ui query]
+#_(defn mut! [ui query]
   (let [{:keys [app]} ui
         {:keys [state mutf]} app
         {:keys [db]} @state
@@ -186,13 +186,15 @@
 ;; Sync ;;
 ;;;;;;;;;;
 
-(defn merge! [app query tree]
+#_(defn merge! [app query tree]
   (let [{:keys [db normf mergef]} app
         attrs (query->attrs query)
         db* (normf tree)]
     (vswap! db mergef db*)
     (doseq [id (ui-by-attrs app attrs)]
       (ui-sync-loc! app id))))
+
+(defn merge! [app query tree])
 
 (defn- sync! [app]
   (let [{:keys [state syncf]} app
