@@ -1,24 +1,47 @@
 (ns remlok.loc
   (:require
-    [reagent.core :as re]))
+    [reagent.core :as re]
+    [reagent.ratom :refer [make-reaction]]
+    [remlok.query :as q]))
 
-;;;;;;;;;
-;; App ;;
-;;;;;;;;;
+(def ^:private db
+  (re/atom nil))
 
-(def ^:private app
-  {:db (re/atom nil)
-   :funs {}})
+(def ^:private pubs
+  (atom nil))
+
+(defn pub [attr fun]
+  (swap! pubs assoc attr fun))
+
+(defn- attr-pub [attr]
+  (->> (constantly nil)
+       (get @pubs :default)
+       (get @pubs attr)))
+
+(defn- query-node [ctx node]
+  (let [{:keys [attr]} (q/node->ast node)
+        pub (attr-pub attr)]
+    (when-let [val (pub ctx node)]
+      [attr val])))
+
+(defn- query-query [ctx query]
+  (not-empty
+    (into
+      {}
+      (comp
+        (map #(query-node ctx %))
+        (filter some?))
+      query)))
+
+(defn sub
+  ([query]
+    (sub {:db db} query))
+  ([ctx query]
+   (make-reaction
+     #(query-query ctx query))))
 
 (defn mount! [ui el]
   (re/render ui el))
-
-;;;;;;;;
-;; UI ;;
-;;;;;;;;
-
-#_(defn ui [ui]
-  )
 
 ;;;;;;;;;;
 ;; Sync ;;

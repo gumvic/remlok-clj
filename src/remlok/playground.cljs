@@ -3,7 +3,7 @@
 (ns remlok.playground
   (:require
     [remlok.loc :refer [mount!]]
-    [remlok.playground.hello :refer [root]]))
+    [remlok.playground.counter :refer [root]]))
 
 (mount!
   [root]
