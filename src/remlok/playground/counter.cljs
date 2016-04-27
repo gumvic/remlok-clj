@@ -4,9 +4,9 @@
     [remlok.router :refer [route]]))
 
 (defmulti res route)
-(defmethod res :counter [{:keys [db]} _]
+(defmethod res :counter [db _ _]
   @db)
-(defmethod res :default [_ _]
+(defmethod res :default [_ _ _]
   nil)
 
 (defmulti trans route)

@@ -12,41 +12,30 @@
     {:resf (fn [_ _])
      :transf (fn [db _] db)}))
 
-#_(defn resf [f]
-  (swap! funs assoc :resf f))
-
-#_(defn msgf [f]
-  (swap! funs assoc :msgf f))
-
-#_(defn- res [attr]
-  (->> (constantly nil)
-       (get @pubs :default)
-       (get @pubs attr)))
-
 (defn pub [f]
   (swap! funs assoc :resf f))
 
-(defn- res-node [ctx node]
+(defn- res-node [node ctx]
   (let [{:keys [resf]} @funs
         {:keys [attr]} (q/node->ast node)]
-    (when-let [val (resf ctx node)]
+    (when-let [val (resf db node ctx)]
       [attr val])))
 
-(defn- res-query [ctx query]
+(defn- res-query [query ctx]
   (not-empty
     (into
       {}
       (comp
-        (map #(res-node ctx %))
+        (map #(res-node % ctx))
         (filter some?))
       query)))
 
 (defn sub
   ([query]
-    (sub {:db db} query))
-  ([ctx query]
+    (sub query nil))
+  ([query ctx]
    (reaction
-     (res-query ctx query))))
+     (res-query query ctx))))
 
 (defn hub [f]
   (swap! funs assoc :transf f))
