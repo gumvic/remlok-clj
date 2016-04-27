@@ -2,9 +2,9 @@
 
 (ns remlok.playground
   (:require
-    [remlok.loc :refer [mount!]]
+    [reagent.core :refer [render]]
     [remlok.playground.counter :refer [root]]))
 
-(mount!
+(render
   [root]
   (js/document.getElementById "app"))

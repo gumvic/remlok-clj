@@ -5,7 +5,7 @@
 (pub
   :counter
   (fn [{:keys [db]} _]
-    123))
+    @db))
 
 (defn root []
   (let [{:keys [counter]} @(sub [:counter])]

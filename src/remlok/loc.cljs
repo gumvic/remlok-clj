@@ -1,11 +1,11 @@
 (ns remlok.loc
   (:require
-    [reagent.core :as re]
-    [reagent.ratom :refer [make-reaction]]
+    [reagent.core :as r]
+    [reagent.ratom :refer-macros [reaction]]
     [remlok.query :as q]))
 
 (def ^:private db
-  (re/atom nil))
+  (r/atom nil))
 
 (def ^:private pubs
   (atom nil))
@@ -13,23 +13,23 @@
 (defn pub [attr fun]
   (swap! pubs assoc attr fun))
 
-(defn- attr-pub [attr]
+(defn- res [attr]
   (->> (constantly nil)
        (get @pubs :default)
        (get @pubs attr)))
 
-(defn- query-node [ctx node]
+(defn- res-node [ctx node]
   (let [{:keys [attr]} (q/node->ast node)
-        pub (attr-pub attr)]
-    (when-let [val (pub ctx node)]
+        res (res attr)]
+    (when-let [val (res ctx node)]
       [attr val])))
 
-(defn- query-query [ctx query]
+(defn- res-query [ctx query]
   (not-empty
     (into
       {}
       (comp
-        (map #(query-node ctx %))
+        (map #(res-node ctx %))
         (filter some?))
       query)))
 
@@ -37,11 +37,14 @@
   ([query]
     (sub {:db db} query))
   ([ctx query]
-   (make-reaction
-     #(query-query ctx query))))
+   (reaction
+     (res-query ctx query))))
 
-(defn mount! [ui el]
-  (re/render ui el))
+(defn hub [fun]
+  )
+
+(defn disp [msg]
+  )
 
 ;;;;;;;;;;
 ;; Sync ;;
