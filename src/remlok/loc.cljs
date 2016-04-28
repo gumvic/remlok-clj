@@ -20,24 +20,6 @@
 (defn mut [attr mut]
   (swap! mutfs assoc attr mut))
 
-#_(defn- res-node [node ctx]
-  (let [{:keys [attr]} (q/node->ast node)
-        res (->> (constantly nil)
-                 (get @resfs :default)
-                 (get @resfs attr))
-        val (res db node ctx)]
-    (when val
-      [attr val])))
-
-#_(defn- res* [query ctx]
-  (not-empty
-    (into
-      {}
-      (comp
-        (map #(res-node % ctx))
-        (filter some?))
-      query)))
-
 (defn- sub* [query ctx]
   (let [xs (mapv
              #(let [attr (get (q/node->ast %) :attr)
@@ -61,26 +43,18 @@
   ([query ctx]
     (sub* query ctx)))
 
-(defn- mut-node [node]
-  (let [{:keys [attr]} (q/node->ast node)
-        mut (->> (constantly nil)
-                 (get @mutfs :default)
-                 (get @mutfs attr))]
-    #(mut % node)))
-
-(defn- mut-query [query]
-  #(reduce
-    (fn [db f] (f db))
-    %
-    (into
-      []
-      (comp
-        (map mut-node)
-        (filter some?))
-      query)))
+(defn- mut* [db query]
+  (reduce
+    #(let [attr (get (q/node->ast %2) :attr)
+           f (->> (fn [db _] db)
+                  (get @mutfs :default)
+                  (get @mutfs attr))]
+      (f %1 %2))
+    db
+    query))
 
 (defn mut! [query]
-  (swap! db (mut-query query))
+  (swap! db mut* query)
   nil)
 
 ;;;;;;;;;;
