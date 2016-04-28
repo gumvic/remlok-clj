@@ -8,42 +8,81 @@
 (def ^:private db
   (r/atom nil))
 
-(def ^:private funs
+#_(def ^:private funs
   (atom
     {:readf (fn [_ _])
      :mutf (fn [db _] db)}))
 
-(defn readf! [f]
+#_(defn readf! [f]
   (swap! funs assoc :readf f))
 
-(defn- read-node [ctx node]
+#_(defn- read-node [ctx node]
   (let [{:keys [readf]} @funs
         {:keys [attr]} (q/node->ast node)]
     (when-let [val (readf db node ctx)]
       [attr val])))
 
-(defn- read-query [ctx query]
+;; TODO compile query (getting the resolvers at that step)
+
+(def ^:private resfs
+  (atom nil))
+
+(def ^:private mutfs
+  (atom nil))
+
+(defn pub [attr res]
+  (swap! resfs assoc attr res))
+
+(defn mut [attr mut]
+  (swap! mutfs assoc attr mut))
+
+(defn- res-node [ctx node]
+  (let [{:keys [attr]} (q/node->ast node)
+        res (->> (constantly nil)
+                 (get @resfs :default)
+                 (get @resfs attr))
+        val (res ctx node)]
+    (when val
+      [attr val])))
+
+(defn- res-query [ctx query]
   (not-empty
     (into
       {}
       (comp
-        (map #(read-node ctx %))
+        (map #(res-node ctx %))
         (filter some?))
       query)))
 
-(defn read
+(defn sub
   ([query]
-    (read {:db db} query))
+    (sub {:db db} query))
   ([ctx query]
    (reaction
-     (read-query ctx query))))
+     (res-query ctx query))))
 
-(defn mutf! [f]
-  (swap! funs assoc :mutf f))
+(defn- mut-node [node]
+  (let [{:keys [attr]} (q/node->ast node)
+        mut (->> (constantly nil)
+                 (get @mutfs :default)
+                 (get @mutfs attr))]
+    #(mut %)))
+
+(defn- mut-query [query]
+  (let [fs (into
+             []
+             (comp
+               (map mut-node)
+               (filter some?))
+             query)]
+    #(reduce
+      (fn [db f] (f db))
+      %
+      fs)))
 
 (defn mut! [query]
-  #_(let [{:keys [transf]} @funs]
-    (swap! db transf msg)))
+  (swap! db (mut-query query))
+  nil)
 
 ;;;;;;;;;;
 ;; Sync ;;

@@ -5,6 +5,7 @@
 ;; TODO validation can't tell vector from list and accepts either in any cases
 ;; TODO Attr allows multiple values, which it shouldn't
 ;; TODO use custom validators
+;; TODO ditch funs
 
 (declare Query)
 
