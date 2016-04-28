@@ -2,7 +2,11 @@
   (:require
     [remlok.loc :refer [pub sub mut mut!]]))
 
-(pub :counter deref)
+(pub
+  :counter
+  (fn [db]
+    (fn []
+      @db)))
 
 (mut :inc inc)
 

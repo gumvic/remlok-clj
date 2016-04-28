@@ -2,13 +2,12 @@
   (:refer-clojure :exclude [read])
   (:require
     [reagent.core :as r]
-    [reagent.ratom :refer-macros [reaction]]
+    [reagent.ratom :refer-macros [reaction] :refer [make-reaction]]
     [remlok.query :as q]))
 
 (def ^:private db
   (r/atom nil))
 
-;; TODO compile query (getting the resolvers at that step)
 (def ^:private resfs
   (atom nil))
 
@@ -21,7 +20,7 @@
 (defn mut [attr mut]
   (swap! mutfs assoc attr mut))
 
-(defn- res-node [node ctx]
+#_(defn- res-node [node ctx]
   (let [{:keys [attr]} (q/node->ast node)
         res (->> (constantly nil)
                  (get @resfs :default)
@@ -30,7 +29,7 @@
     (when val
       [attr val])))
 
-(defn- res-query [query ctx]
+#_(defn- res* [query ctx]
   (not-empty
     (into
       {}
@@ -39,12 +38,28 @@
         (filter some?))
       query)))
 
+(defn- sub* [query ctx]
+  (let [xs (mapv
+             #(let [attr (get (q/node->ast %) :attr)
+                    f (->> (constantly nil)
+                           (get @resfs :default)
+                           (get @resfs attr))]
+               [attr (f db query ctx)])
+             query)
+        {:keys [consts reacts]} (group-by
+                                  #(if (fn? (second %)) :reacts :consts)
+                                  xs)
+        reacts (mapv #(vector (first %) (make-reaction (second %))) reacts)]
+    (reaction
+      (merge
+        consts
+        (map #(vector (first %) @(second %)) reacts)))))
+
 (defn sub
   ([query]
     (sub query nil))
   ([query ctx]
-   (reaction
-     (res-query query ctx))))
+    (sub* query ctx)))
 
 (defn- mut-node [node]
   (let [{:keys [attr]} (q/node->ast node)
@@ -54,16 +69,15 @@
     #(mut % node)))
 
 (defn- mut-query [query]
-  (let [fs (into
-             []
-             (comp
-               (map mut-node)
-               (filter some?))
-             query)]
-    #(reduce
-      (fn [db f] (f db))
-      %
-      fs)))
+  #(reduce
+    (fn [db f] (f db))
+    %
+    (into
+      []
+      (comp
+        (map mut-node)
+        (filter some?))
+      query)))
 
 (defn mut! [query]
   (swap! db (mut-query query))
