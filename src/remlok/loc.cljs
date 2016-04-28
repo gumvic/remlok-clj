@@ -21,37 +21,37 @@
 (defn mut [attr mut]
   (swap! mutfs assoc attr mut))
 
-(defn- res-node [ctx node]
+(defn- res-node [node ctx]
   (let [{:keys [attr]} (q/node->ast node)
         res (->> (constantly nil)
                  (get @resfs :default)
                  (get @resfs attr))
-        val (res ctx node)]
+        val (res db node ctx)]
     (when val
       [attr val])))
 
-(defn- res-query [ctx query]
+(defn- res-query [query ctx]
   (not-empty
     (into
       {}
       (comp
-        (map #(res-node ctx %))
+        (map #(res-node % ctx))
         (filter some?))
       query)))
 
 (defn sub
   ([query]
-    (sub {:db db} query))
-  ([ctx query]
+    (sub query nil))
+  ([query ctx]
    (reaction
-     (res-query ctx query))))
+     (res-query query ctx))))
 
 (defn- mut-node [node]
   (let [{:keys [attr]} (q/node->ast node)
         mut (->> (constantly nil)
                  (get @mutfs :default)
                  (get @mutfs attr))]
-    #(mut %)))
+    #(mut % node)))
 
 (defn- mut-query [query]
   (let [fs (into
