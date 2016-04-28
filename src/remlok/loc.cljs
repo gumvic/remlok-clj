@@ -8,22 +8,7 @@
 (def ^:private db
   (r/atom nil))
 
-#_(def ^:private funs
-  (atom
-    {:readf (fn [_ _])
-     :mutf (fn [db _] db)}))
-
-#_(defn readf! [f]
-  (swap! funs assoc :readf f))
-
-#_(defn- read-node [ctx node]
-  (let [{:keys [readf]} @funs
-        {:keys [attr]} (q/node->ast node)]
-    (when-let [val (readf db node ctx)]
-      [attr val])))
-
 ;; TODO compile query (getting the resolvers at that step)
-
 (def ^:private resfs
   (atom nil))
 
