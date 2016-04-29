@@ -78,10 +78,29 @@
 (defn- reactive? [x]
   (satisfies? IDeref x))
 
-(def ^:private ^:dynamic *in-sub?* false)
-(def ^:private ^:dynamic *rsub*)
+;; TODO refactor sub**, sub***, rsub*, rsub**, mut*, mut**, rmut* - better names
 
-;; TODO refactor sub**, sub*** - better names
+(defn- rsub** [node ctx]
+  (let [attr (get (q/node->ast node) :attr)
+        f (->> (constantly nil)
+               (get-in @resfs [:rem :default])
+               (get-in @resfs [:rem attr]))]
+    (f @db node ctx)))
+
+(defn- rsub* [query ctx]
+  (not-empty
+    (into
+      []
+      (comp
+        (map #(rsub** % ctx))
+        (filter some?))
+      query)))
+
+(defn rsub
+  ([query]
+    (rsub query nil))
+  ([query ctx]
+    (rsub* query ctx)))
 
 (defn- sub*** [[attr res]]
   (if (reactive? res)
@@ -102,7 +121,10 @@
 (defn- sub* [query ctx]
   (let [rs (mapv #(sub** % ctx) query)]
     (reaction
-      (into {} (map sub***) rs))))
+      (not-empty
+        (into {} (map sub***) rs)))))
+
+(def ^:private ^:dynamic *in-sub?* false)
 
 (defn sub
   ([query]
@@ -110,13 +132,11 @@
   ([query ctx]
     (if *in-sub?*
       (sub* query ctx)
-      (binding [*in-sub?* true
-                *rsub* (volatile! [])]
-        (let [sub (sub* query ctx)]
-          (sched-sub! @*rsub*)
-          sub)))))
+      (binding [*in-sub?* true]
+        (sched-sub!
+          (rsub query))
+        (sub* query ctx)))))
 
-;; TODO refactor mut** - better name
 (defn- mut** [db node]
   (let [attr (get (q/node->ast node) :attr)
         f (->> (fn [db _] db)
@@ -142,7 +162,6 @@
       (filter some?))
     query))
 
-;; TODO allow recursive mutations?
 (defn mut! [query]
   (sched-mut!
     (rmut query))
