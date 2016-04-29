@@ -1,6 +1,5 @@
 (ns remlok.loc
   (:require
-    [goog.async.nextTick]
     [reagent.core :as r]
     [reagent.ratom
      :refer-macros [reaction]
@@ -22,7 +21,7 @@
   (atom {:scheduled? false
          :subs []
          :muts []
-         :syncf #()
+         :syncf #(%2 nil)
          :mergef merge}))
 
 ;;;;;;;;;;
@@ -48,7 +47,7 @@
   (let [{:keys [scheduled?]} @sync]
     (when-not scheduled?
       (vswap! sync assoc :scheduled? true)
-      (goog.async.nextTick sync!))))
+      (js/setTimeout sync! 0))))
 
 (defn- sched-sub! [query]
   (when (seq query)
@@ -79,7 +78,16 @@
 (defn- reactive? [x]
   (satisfies? IDeref x))
 
+(def ^:private ^:dynamic *in-sub?* false)
+(def ^:private ^:dynamic *rsub*)
+
 ;; TODO refactor sub**, sub*** - better names
+
+(defn- sub*** [[attr res]]
+  (if (reactive? res)
+    [attr @res]
+    [attr res]))
+
 (defn- sub** [node ctx]
   (let [attr (get (q/node->ast node) :attr)
         f (->> (constantly nil)
@@ -91,19 +99,10 @@
               res)]
     [attr res]))
 
-(defn- sub*** [[attr res]]
-  (if (reactive? res)
-    [attr @res]
-    [attr res]))
-
 (defn- sub* [query ctx]
   (let [rs (mapv #(sub** % ctx) query)]
     (reaction
       (into {} (map sub***) rs))))
-
-(defn- rsub [query ctx])
-
-(def ^:private ^:dynamic *in-sub?* false)
 
 (defn sub
   ([query]
@@ -111,10 +110,11 @@
   ([query ctx]
     (if *in-sub?*
       (sub* query ctx)
-      (binding [*in-sub?* true]
-        (sched-sub!
-          (rsub query ctx))
-        (sub* query ctx)))))
+      (binding [*in-sub?* true
+                *rsub* (volatile! [])]
+        (let [sub (sub* query ctx)]
+          (sched-sub! @*rsub*)
+          sub)))))
 
 ;; TODO refactor mut** - better name
 (defn- mut** [db node]
@@ -142,6 +142,7 @@
       (filter some?))
     query))
 
+;; TODO allow recursive mutations?
 (defn mut! [query]
   (sched-mut!
     (rmut query))
