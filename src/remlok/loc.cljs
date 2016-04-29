@@ -1,8 +1,13 @@
 (ns remlok.loc
   (:require
+    [goog.async.nextTick]
     [reagent.core :as r]
-    [reagent.ratom :refer-macros [reaction] :refer [make-reaction]]
+    [reagent.ratom
+     :refer-macros [reaction]
+     :refer [make-reaction]]
     [remlok.query :as q]))
+
+;; TODO split into namespaces (should be relatively easy)
 
 (def ^:private db
   (r/atom nil))
@@ -13,11 +18,63 @@
 (def ^:private mutfs
   (atom nil))
 
+(def ^:private sync
+  (atom {:scheduled? false
+         :subs []
+         :muts []
+         :syncf #()
+         :mergef merge}))
+
+;;;;;;;;;;
+;; Sync ;;
+;;;;;;;;;;
+
+(defn merge! [tree]
+  (let [{:keys [mergef]} @sync]
+    (swap! db mergef tree)))
+
+(defn- sync! []
+  (let [{:keys [syncf subs muts]} @sync
+        sync (merge
+               (when (seq subs) {:subs subs})
+               (when (seq muts) {:muts muts}))]
+    (when (seq sync)
+      (syncf sync merge!)
+      (vswap! sync merge {:scheduled? false
+                          :subs []
+                          :muts []}))))
+
+(defn- sched-sync! []
+  (let [{:keys [scheduled?]} @sync]
+    (when-not scheduled?
+      (vswap! sync assoc :scheduled? true)
+      (goog.async.nextTick sync!))))
+
+(defn- sched-sub! [query]
+  (when (seq query)
+    (swap! sync update :subs conj query)
+    (sched-sync!)))
+
+(defn- sched-mut! [query]
+  (when (seq query)
+    (swap! sync update :muts conj query)
+    (sched-sync!)))
+
+;;;;;;;;;;;;;;;
+;; Pub / Sub ;;
+;;;;;;;;;;;;;;;
+
 (defn pub [attr res]
-  (swap! resfs assoc attr res))
+  (swap! resfs assoc-in [:loc attr] res))
 
 (defn mut [attr mut]
-  (swap! mutfs assoc attr mut))
+  (swap! mutfs assoc-in [:loc attr] mut))
+
+(defn rpub [attr res]
+  (swap! resfs assoc-in [:rem attr] res))
+
+(defn rmut [attr mut]
+  (swap! mutfs assoc-in [:rem attr] mut))
 
 (defn- reactive? [x]
   (satisfies? IDeref x))
@@ -26,8 +83,8 @@
 (defn- sub** [node ctx]
   (let [attr (get (q/node->ast node) :attr)
         f (->> (constantly nil)
-               (get @resfs :default)
-               (get @resfs attr))
+               (get-in @resfs [:loc :default])
+               (get-in @resfs [:loc attr]))
         res (f db node ctx)
         res (if (fn? res)
               (make-reaction res)
@@ -44,74 +101,49 @@
     (reaction
       (into {} (map sub***) rs))))
 
+(defn- rsub [query ctx])
+
+(def ^:private ^:dynamic *in-sub?* false)
+
 (defn sub
   ([query]
     (sub query nil))
   ([query ctx]
-    (sub* query ctx)))
+    (if *in-sub?*
+      (sub* query ctx)
+      (binding [*in-sub?* true]
+        (sched-sub!
+          (rsub query ctx))
+        (sub* query ctx)))))
 
 ;; TODO refactor mut** - better name
 (defn- mut** [db node]
   (let [attr (get (q/node->ast node) :attr)
         f (->> (fn [db _] db)
-               (get @mutfs :default)
-               (get @mutfs attr))]
+               (get-in @mutfs [:loc :default])
+               (get-in @mutfs [:loc attr]))]
     (f db node)))
 
 (defn- mut* [db query]
   (reduce mut** db query))
 
+(defn- rmut* [node]
+  (let [attr (get (q/node->ast node) :attr)
+        f (->> (fn [_ _] nil)
+               (get-in @mutfs [:rem :default])
+               (get-in @mutfs [:rem attr]))]
+    (f db node)))
+
+(defn- rmut [query]
+  (into
+    []
+    (comp
+      (map rmut*)
+      (filter some?))
+    query))
+
 (defn mut! [query]
+  (sched-mut!
+    (rmut query))
   (swap! db mut* query)
   nil)
-
-;;;;;;;;;;
-;; Sync ;;
-;;;;;;;;;;
-
-#_(defn merge! [app query tree]
-  (let [{:keys [db normf mergef]} app
-        attrs (query->attrs query)
-        db* (normf tree)]
-    (vswap! db mergef db*)
-    (doseq [id (ui-by-attrs app attrs)]
-      (ui-sync-loc! app id))))
-
-#_(defn merge! [app query tree])
-
-#_(defn- sync! [app]
-  (let [{:keys [state syncf]} app
-        {{:keys [reads muts]} :sync} @state
-        sync (merge
-               (when (seq reads) {:reads reads})
-               (when (seq muts) {:muts muts}))]
-    (when (seq sync)
-      (syncf
-        sync
-        #(doseq [[query tree] %]
-          (merge! app query tree))))
-    (vswap! state assoc :sync {:scheduled? false
-                               :reads []
-                               :muts []})))
-
-;; TODO use goog nextTick
-#_(defn- schedule-sync! [app]
-  (let [{:keys [state]} app
-        {{:keys [scheduled?]} :sync} @state]
-    (when-not scheduled?
-      (vswap! state assoc-in [:sync :scheduled?] true)
-      (js/setTimeout
-        #(sync! app)
-        0))))
-
-#_(defn- schedule-read! [app query]
-  (when (seq query)
-    (let [{:keys [state]} app]
-      (vswap! state update-in [:sync :reads] conj query)
-      (schedule-sync! app))))
-
-#_(defn- schedule-mut! [app query]
-  (when (seq query)
-    (let [{:keys [state]} app]
-      (vswap! state update-in [:sync :muts] conj query)
-      (schedule-sync! app))))
