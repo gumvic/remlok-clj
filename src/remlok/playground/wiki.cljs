@@ -2,7 +2,7 @@
   (:import [goog Uri]
            [goog.net Jsonp])
   (:require
-    [remlok.loc :refer [pub sub rpub rsub mut mut!]]
+    [remlok.loc :refer [pub sub rpub rsub mut mut! syncf]]
     [remlok.query :as q]))
 
 (defn wiki [s res]
@@ -33,23 +33,29 @@
     (let [args (get (q/node->ast node) :args)]
       (assoc db :search args))))
 
+(syncf
+  (fn [req res]
+    (println req)))
+
 (defn input [search]
   [:input
    {:on-change #(mut! `[(:search ~(-> % .-target .-value))])
     :value (str search)}])
 
-(defn list [sugg]
-  [:ul
-   (map
-     (fn [s]
-       [:li (str s)])
-     sugg)])
+(defn list [search]
+  (let [props (sub `[(:sugg ~search)])]
+    (fn []
+      (let [{:keys [sugg]} @props]
+        [:ul
+         (map
+           (fn [s]
+             [:li (str s)])
+           sugg)]))))
 
 (defn root []
-  (let [search (sub [:search])
-        sugg ()]
+  (let [props (sub [:search])]
     (fn []
-      (let [{:keys [search sugg]} @props]
+      (let [{:keys [search]} @props]
         [:div
          [input search]
-         [list sugg]]))))
+         [list search]]))))

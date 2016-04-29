@@ -3,7 +3,7 @@
     [reagent.core :as r]
     [reagent.ratom
      :refer-macros [reaction]
-     :refer [make-reaction]]
+     :refer [make-reaction IReactiveAtom]]
     [remlok.query :as q]))
 
 ;; TODO split into namespaces (should be relatively easy)
@@ -11,11 +11,9 @@
 (def ^:private db
   (r/atom nil))
 
-(def ^:private resfs
-  (atom nil))
-
-(def ^:private mutfs
-  (atom nil))
+;;;;;;;;;;
+;; Sync ;;
+;;;;;;;;;;
 
 (def ^:private sync
   (atom {:scheduled? false
@@ -24,9 +22,11 @@
          :syncf #(%2 nil)
          :mergef merge}))
 
-;;;;;;;;;;
-;; Sync ;;
-;;;;;;;;;;
+(defn syncf [f]
+  (swap! sync assoc :syncf f))
+
+(defn mergef [f]
+  (swap! sync assoc :mergef f))
 
 (defn merge! [tree]
   (let [{:keys [mergef]} @sync]
@@ -34,19 +34,19 @@
 
 (defn- sync! []
   (let [{:keys [syncf subs muts]} @sync
-        sync (merge
+        sync* (merge
                (when (seq subs) {:subs subs})
                (when (seq muts) {:muts muts}))]
-    (when (seq sync)
-      (syncf sync merge!)
-      (vswap! sync merge {:scheduled? false
+    (when (seq sync*)
+      (syncf sync* merge!)
+      (swap! sync merge {:scheduled? false
                           :subs []
                           :muts []}))))
 
 (defn- sched-sync! []
   (let [{:keys [scheduled?]} @sync]
     (when-not scheduled?
-      (vswap! sync assoc :scheduled? true)
+      (swap! sync assoc :scheduled? true)
       (js/setTimeout sync! 0))))
 
 (defn- sched-sub! [query]
@@ -63,6 +63,12 @@
 ;; Pub / Sub ;;
 ;;;;;;;;;;;;;;;
 
+(def ^:private resfs
+  (atom nil))
+
+(def ^:private mutfs
+  (atom nil))
+
 (defn pub [attr res]
   (swap! resfs assoc-in [:loc attr] res))
 
@@ -76,7 +82,7 @@
   (swap! mutfs assoc-in [:rem attr] mut))
 
 (defn- reactive? [x]
-  (satisfies? IDeref x))
+  (implements? IReactiveAtom x))
 
 ;; TODO refactor sub**, sub***, rsub*, rsub**, mut*, mut**, rmut* - better names
 
