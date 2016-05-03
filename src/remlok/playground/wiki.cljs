@@ -18,7 +18,6 @@
     (get @db :search)))
 (defmethod pubf :sugg [db node]
   (reaction
-    (println 123)
     (get-in @db [:sugg (-> node q/node->ast :args)])))
 
 (defmulti mutf route)
@@ -48,10 +47,26 @@
          {:on-change #(mut! `[(:search ~(-> % .-target .-value))])
           :value (str search)}]))))
 
+#_(defn list []
+  (let [search (sub [:search])
+        props (reaction
+                (let [{:keys [search]} @search]
+                  (println 123)
+                  ;;@(sub `[(:sugg ~search)])
+                  (sub `[(:sugg ~search)])))]
+    (fn []
+      (let [{:keys [sugg]} @@props]
+        [:ul
+         (map
+           (fn [s]
+             [:li (str s)])
+           sugg)]))))
+
 (defn list []
-  (let [ops (sub [:search])
-        search (reaction (get @ops :search))
-        props (sub `[(:sugg search)])]
+  (let [props (reaction
+                (let [{:keys [search]} @(sub [:search])]
+                  (println 123)
+                  @(sub `[(:sugg ~search)])))]
     (fn []
       (let [{:keys [sugg]} @props]
         [:ul

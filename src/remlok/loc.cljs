@@ -105,6 +105,9 @@
   ([query ctx]
     (rsub* query ctx)))
 
+(defn- reactive? [x]
+  (implements? IReactiveAtom x))
+
 (defn- sub* [query ctx]
   (let [f @pubf
         rs (into
@@ -112,7 +115,7 @@
              (for [node query
                    :let [a (-> node q/node->ast :attr)
                          r (f db node ctx)]
-                   :when (some? r)]
+                   :when r]
                [a r]))]
     (reaction
       (not-empty
@@ -127,7 +130,6 @@
   ([query]
    (sub query nil))
   ([query ctx]
-    ;;(println "sub " query)
    (if *in-sub?*
      (sub* query ctx)
      (binding [*in-sub?* true]
