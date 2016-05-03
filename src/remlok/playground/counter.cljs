@@ -1,23 +1,27 @@
 (ns remlok.playground.counter
   (:require
+    [remlok.router :refer [route]]
     [remlok.loc :refer [pub sub mut mut!]]))
 
-(pub
-  :counter
-  (fn [db]
-    (fn []
-      @db)))
+(defmulti pubf route)
+(defmethod pubf :counter [db]
+  db)
 
-(mut :inc inc)
+(defmulti mutf route)
+(defmethod mutf :inc [db]
+  (inc db))
+(defmethod mutf :dec [db]
+  (dec db))
 
-(mut :dec dec)
+(pub pubf)
+(mut mutf)
 
 (defn root []
-  (let [counter (sub [:counter])]
+  (let [props (sub [:counter])]
     (fn []
       [:div
        [:button {:on-click #(mut! [:dec :dec])} "--"]
        [:button {:on-click #(mut! [:dec])} "-"]
-       [:span (str (get @counter :counter))]
+       [:span (str (get @props :counter))]
        [:button {:on-click #(mut! [:inc])} "+"]
        [:button {:on-click #(mut! [:inc :inc])} "++"]])))
