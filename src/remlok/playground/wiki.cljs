@@ -2,6 +2,8 @@
   (:import [goog Uri]
            [goog.net Jsonp])
   (:require
+    [reagent.ratom :refer-macros [reaction]]
+    [remlok.router :refer [route]]
     [remlok.loc :refer [pub sub rpub rsub mut mut! syncf]]
     [remlok.query :as q]))
 
@@ -10,29 +12,29 @@
         gjsonp (Jsonp. (Uri. (str uri s)))]
     (.send gjsonp nil (comp res second))))
 
-(pub
-  :search
-  (fn [db]
-    (fn []
-      (get @db :search))))
+(defmulti pubf route)
+(defmethod pubf :search [db]
+  (reaction
+    (get @db :search)))
+(defmethod pubf :sugg [db node]
+  (reaction
+    (get-in @db [:sugg (-> node q/node->ast :args)])))
 
-(pub
-  :sugg
-  (fn [db]
-    (fn []
-      (get @db :sugg))))
+(defmulti mutf route)
+(defmethod mutf :search [db node]
+  (assoc db :search (-> node q/node->ast :args)))
 
-(rpub
-  :sugg
-  (fn [db node]
-    node))
+(defmulti rpubf route)
+(defmethod rpubf :sugg [db node]
+  (let [s (-> node q/node->ast :args)]
+    (when-not (get-in db [:sugg s])
+      `(:sugg ~s))))
+(defmethod rpubf :default []
+  nil)
 
-(mut
-  :search
-  (fn [db node]
-    (let [args (get (q/node->ast node) :args)]
-      (assoc db :search args))))
-
+(pub pubf)
+(mut mutf)
+(rpub rpubf)
 (syncf
   (fn [req res]
     (println req)))

@@ -111,7 +111,8 @@
              []
              (for [node query
                    :let [a (-> node q/node->ast :attr)
-                         r (f db node ctx)]]
+                         r (f db node ctx)]
+                   :when (some? r)]
                [a r]))]
     (reaction
       (not-empty
@@ -124,14 +125,14 @@
 
 (defn sub
   ([query]
-    (sub query nil))
+   (sub query nil))
   ([query ctx]
-    (if *in-sub?*
-      (sub* query ctx)
-      (binding [*in-sub?* true]
-        (sched-sub!
-          (rsub query))
-        (sub* query ctx)))))
+   (if *in-sub?*
+     (sub* query ctx)
+     (binding [*in-sub?* true]
+       (sched-sub!
+         (rsub query))
+       (sub* query ctx)))))
 
 (defn- mut* [db query]
   (reduce @mutf db query))

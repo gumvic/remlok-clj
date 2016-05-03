@@ -3,7 +3,7 @@
 (ns remlok.playground
   (:require
     [reagent.core :refer [render]]
-    [remlok.playground.counter :refer [root]]))
+    [remlok.playground.wiki :refer [root]]))
 
 (render
   [root]
