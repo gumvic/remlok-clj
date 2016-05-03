@@ -153,3 +153,29 @@
     (rmut query))
   (swap! db mut* query)
   nil)
+
+(defn ui
+  ([render]
+    render)
+  ([query render]
+    (fn [& args]
+      (let [props (sub (apply query args))]
+        (fn [& args]
+          (apply render @props args))))))
+
+(defn ui [& steps]
+  (let [quers (butlast steps)
+        rend (last steps)]
+    (if (seq quers)
+      (fn [& args]
+        (let [props (reduce
+                      (fn [r q]
+                        (if r
+                          (reaction
+                            (sub (apply q @r args)))
+                          (sub (apply q args))))
+                      nil
+                      quers)]
+          (fn [& args]
+            (apply rend @props args))))
+      rend)))

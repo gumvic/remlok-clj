@@ -4,7 +4,7 @@
   (:require
     [reagent.ratom :refer-macros [reaction]]
     [remlok.router :refer [route]]
-    [remlok.loc :refer [pub sub rpub rsub mut mut! syncf]]
+    [remlok.loc :refer [pub sub rpub rsub mut mut! syncf ui]]
     [remlok.query :as q]))
 
 (defn wiki [s res]
@@ -39,13 +39,17 @@
   (fn [req res]
     (println req)))
 
-(defn input [search]
-  [:input
-   {:on-change #(mut! `[(:search ~(-> % .-target .-value))])
-    :value (str search)}])
+#_(defn input []
+  (let [props (sub [:search])]
+    (fn []
+      (let [{:keys [search]} @props]
+        [:input
+         {:on-change #(mut! `[(:search ~(-> % .-target .-value))])
+          :value (str search)}]))))
 
-(defn list [search]
-  (let [props (sub `[(:sugg ~search)])]
+#_(defn list []
+  (let [ops (sub [:search])
+        props (sub `[(:sugg ~(get @ops :search))])]
     (fn []
       (let [{:keys [sugg]} @props]
         [:ul
@@ -54,10 +58,26 @@
              [:li (str s)])
            sugg)]))))
 
-(defn root []
-  (let [props (sub [:search])]
+(def input
+  (ui
+    (constantly [:search])
+    (fn [{:keys [search]}]
+      [:input
+       {:on-change #(mut! `[(:search ~(-> % .-target .-value))])
+        :value (str search)}])))
+
+(def list
+  (ui
     (fn []
-      (let [{:keys [search]} @props]
-        [:div
-         [input search]
-         [list search]]))))
+      [:search])
+    (fn [{:keys [search]}]
+      `[(:sugg ~search)])
+    (fn [{:keys [sugg]}]
+      [:ul
+       (map
+         (fn [s]
+           [:li (str s)])
+         sugg)])))
+
+(defn root []
+  [:div [input] [list]])
