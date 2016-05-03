@@ -18,6 +18,7 @@
     (get @db :search)))
 (defmethod pubf :sugg [db node]
   (reaction
+    (println 123)
     (get-in @db [:sugg (-> node q/node->ast :args)])))
 
 (defmulti mutf route)
@@ -37,9 +38,9 @@
 (rpub rpubf)
 (syncf
   (fn [req res]
-    (println req)))
+    #_(println req)))
 
-#_(defn input []
+(defn input []
   (let [props (sub [:search])]
     (fn []
       (let [{:keys [search]} @props]
@@ -47,9 +48,10 @@
          {:on-change #(mut! `[(:search ~(-> % .-target .-value))])
           :value (str search)}]))))
 
-#_(defn list []
+(defn list []
   (let [ops (sub [:search])
-        props (sub `[(:sugg ~(get @ops :search))])]
+        search (reaction (get @ops :search))
+        props (sub `[(:sugg search)])]
     (fn []
       (let [{:keys [sugg]} @props]
         [:ul
@@ -58,7 +60,7 @@
              [:li (str s)])
            sugg)]))))
 
-(def input
+#_(def input
   (ui
     (constantly [:search])
     (fn [{:keys [search]}]
@@ -66,13 +68,14 @@
        {:on-change #(mut! `[(:search ~(-> % .-target .-value))])
         :value (str search)}])))
 
-(def list
+#_(def list
   (ui
     (fn []
       [:search])
     (fn [{:keys [search]}]
       `[(:sugg ~search)])
-    (fn [{:keys [sugg]}]
+    (fn [{:keys [sugg] :as p}]
+      ;;(println "props " p)
       [:ul
        (map
          (fn [s]
@@ -80,4 +83,6 @@
          sugg)])))
 
 (defn root []
-  [:div [input] [list]])
+  [:div
+   [input]
+   [list]])

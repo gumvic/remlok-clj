@@ -127,6 +127,7 @@
   ([query]
    (sub query nil))
   ([query ctx]
+    ;;(println "sub " query)
    (if *in-sub?*
      (sub* query ctx)
      (binding [*in-sub?* true]
@@ -164,18 +165,37 @@
           (apply render @props args))))))
 
 (defn ui [& steps]
-  (let [quers (butlast steps)
-        rend (last steps)]
-    (if (seq quers)
+  (if-let [rend (last steps)]
+    (if-let [[q & qs] (seq (butlast steps))]
       (fn [& args]
         (let [props (reduce
                       (fn [r q]
-                        (if r
-                          (reaction
-                            (sub (apply q @r args)))
-                          (sub (apply q args))))
-                      nil
-                      quers)]
+                        (sub (apply q @(reaction @r) args))
+                        #_(reaction
+                          (println 123)
+                          @(sub (apply q @r args))))
+                      (sub (apply q args))
+                      qs)]
           (fn [& args]
             (apply rend @props args))))
-      rend)))
+      rend)
+    (fn [])))
+
+(defn ui
+  ([rend]
+    rend)
+  ([props rend]
+    (fn [& args]
+      (let [props* (sub (apply props args))]
+        (fn [& args]
+          (apply rend @props* args)))))
+  ([ops props rend]
+    (fn [& args]
+      (let [ops* (sub (apply ops args))
+            ;;ops* (reaction nil)
+            props* (reaction
+                     ;;(println 123)
+                     (sub (apply props @ops* args)))
+            props** (reaction @@props*)]
+        (fn [& args]
+          (apply rend @props** args))))))
