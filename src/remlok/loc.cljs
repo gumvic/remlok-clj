@@ -63,12 +63,6 @@
 ;; Pub / Sub ;;
 ;;;;;;;;;;;;;;;
 
-#_(def ^:private resfs
-  (atom nil))
-
-#_(def ^:private mutfs
-  (atom nil))
-
 (def ^:private pubf
   (atom (fn [])))
 
@@ -93,21 +87,6 @@
 (defn rmut [f]
   (reset! rmutf f))
 
-#_(defn rmut [attr mut]
-  (swap! mutfs assoc-in [:rem attr] mut))
-
-#_(defn- reactive? [x]
-  (implements? IReactiveAtom x))
-
-;; TODO refactor sub**, sub***, rsub*, rsub**, mut*, mut**, rmut* - better names
-
-#_(defn- rsub** [node ctx]
-  (let [attr (get (q/node->ast node) :attr)
-        f (->> (constantly nil)
-               (get-in @resfs [:rem :default])
-               (get-in @resfs [:rem attr]))]
-    (f @db node ctx)))
-
 (defn- rsub** [node ctx]
   (@rpubf @db node ctx))
 
@@ -126,41 +105,20 @@
   ([query ctx]
     (rsub* query ctx)))
 
-#_(defn- sub*** [[attr res]]
-  (if (reactive? res)
-    [attr @res]
-    [attr res]))
-
-#_(defn- sub** [node ctx]
-  (let [attr (get (q/node->ast node) :attr)
-        f (->> (constantly nil)
-               (get-in @resfs [:loc :default])
-               (get-in @resfs [:loc attr]))
-        res (f db node ctx)
-        res (if (fn? res)
-              (make-reaction res)
-              res)]
-    [attr res]))
-
-#_(defn- sub* [query ctx]
-  (let [rs (mapv #(sub** % ctx) query)]
-    (reaction
-      (not-empty
-        (into {} (map sub***) rs)))))
-
-(defn- sub*** [[attr r]]
-  [attr @r])
-
-(defn- sub** [node ctx]
-  (let [attr (-> node q/node->ast :attr)
-        r (@pubf db node ctx)]
-    [attr r]))
-
 (defn- sub* [query ctx]
-  (let [rs (mapv #(sub** % ctx) query)]
+  (let [f @pubf
+        rs (into
+             []
+             (for [node query
+                   :let [a (-> node q/node->ast :attr)
+                         r (f db node ctx)]]
+               [a r]))]
     (reaction
       (not-empty
-        (into {} (map sub***) rs)))))
+        (into
+          {}
+          (for [[a r] rs]
+            [a @r]))))))
 
 (def ^:private ^:dynamic *in-sub?* false)
 
@@ -175,22 +133,8 @@
           (rsub query))
         (sub* query ctx)))))
 
-#_(defn- mut** [db node]
-  (let [attr (get (q/node->ast node) :attr)
-        f (->> (fn [db _] db)
-               (get-in @mutfs [:loc :default])
-               (get-in @mutfs [:loc attr]))]
-    (f db node)))
-
 (defn- mut* [db query]
   (reduce @mutf db query))
-
-#_(defn- rmut* [node]
-  (let [attr (get (q/node->ast node) :attr)
-        f (->> (fn [_ _] nil)
-               (get-in @mutfs [:rem :default])
-               (get-in @mutfs [:rem attr]))]
-    (f db node)))
 
 (defn- rmut* [node]
   (@rmutf @db node))
