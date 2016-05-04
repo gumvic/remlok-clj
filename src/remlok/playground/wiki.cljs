@@ -27,8 +27,9 @@
 (defmulti rpubf route)
 (defmethod rpubf :sugg [db node]
   (let [s (-> node q/node->ast :args)]
-    (when-not (get-in db [:sugg s])
-      `(:sugg ~s))))
+    (when (> (count s) 2)
+      (when-not (get-in db [:sugg s])
+        `(:sugg ~s)))))
 (defmethod rpubf :default []
   nil)
 
@@ -37,7 +38,13 @@
 (rpub rpubf)
 (syncf
   (fn [req res]
-    #_(println req)))
+    #_(println req)
+    (let [s (-> (get req :subs)
+                first
+                first
+                q/node->ast
+                :args)]
+      (wiki s #(res {:sugg {s %}})))))
 
 (defn input []
   (let [props (sub [:search])]
@@ -65,7 +72,7 @@
 (defn list []
   (let [props (reaction
                 (let [{:keys [search]} @(sub [:search])]
-                  (println 123)
+                  ;;(println 123)
                   @(sub `[(:sugg ~search)])))]
     (fn []
       (let [{:keys [sugg]} @props]
