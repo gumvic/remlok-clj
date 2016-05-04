@@ -3,7 +3,7 @@
     [reagent.core :as r]
     [reagent.ratom
      :refer-macros [reaction]
-     :refer [make-reaction IReactiveAtom]]
+     :refer [*ratom-context* make-reaction IReactiveAtom]]
     [remlok.query :as q]))
 
 ;; TODO split into namespaces (should be relatively easy)
@@ -63,6 +63,13 @@
 ;; Pub / Sub ;;
 ;;;;;;;;;;;;;;;
 
+(defn- reactive? [x]
+  (implements? IReactiveAtom x))
+
+(defn- peek [r]
+  (binding [*ratom-context* nil]
+    (-deref r)))
+
 (def ^:private pubf
   (atom (fn [])))
 
@@ -88,7 +95,7 @@
   (reset! rmutf f))
 
 (defn- rsub** [node ctx]
-  (@rpubf @db node ctx))
+  (@rpubf (peek db) node ctx))
 
 (defn- rsub* [query ctx]
   (not-empty
@@ -104,9 +111,6 @@
     (rsub query nil))
   ([query ctx]
     (rsub* query ctx)))
-
-(defn- reactive? [x]
-  (implements? IReactiveAtom x))
 
 (defn- sub* [query ctx]
   (let [f @pubf

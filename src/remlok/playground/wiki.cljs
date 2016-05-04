@@ -44,7 +44,6 @@
 (mergef deep-merge)
 (syncf
   (fn [req res]
-    #_(println req)
     (let [s (-> (get req :subs)
                 first
                 first
@@ -63,7 +62,6 @@
 (defn list []
   (let [props (reaction
                 (let [{:keys [search]} @(sub [:search])]
-                  ;;(println 123)
                   @(sub `[(:sugg ~search)])))]
     (fn []
       (let [{:keys [sugg]} @props]
