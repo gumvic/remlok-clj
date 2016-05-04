@@ -2,33 +2,19 @@
   (:require
     [schema.core :as s]))
 
-;; TODO validation can't tell vector from list and accepts either in any cases
-;; TODO Attr allows multiple values, which it shouldn't
-;; TODO use custom validators
-;; TODO ditch funs
+;; TODO schemas are for doc purposes and don't work properly
 
 (declare Query)
 
-(def Plain-Node
-  s/Keyword)
-
-(def Comp-Node
-  {Plain-Node (s/recursive #'Query)})
-
-(def Node
-  (s/cond-pre Plain-Node Comp-Node))
-
-(def Par-Node
-  [(s/one Node "attr") (s/one s/Any "args")])
-
-(def Fun-Node
-  [(s/one s/Symbol "fun") (s/one Node "attr") (s/one s/Any "args")])
+(def Attr
+  (s/cond-pre
+    s/Keyword
+    {(s/recursive #'Attr) (s/recursive #'Query)}))
 
 (def Query
   [(s/cond-pre
-     Node
-     Par-Node
-     Fun-Node)])
+     Attr
+     [(s/one Attr "attr") (s/one s/Any "args")])])
 
 (defn- attr->ast [attr]
   (cond
@@ -40,19 +26,11 @@
 
 (defn node->ast [node]
   (cond
-    (and
-      (list? node) (= (count node) 2))
+    (list? node)
     (let [[attr args] node]
       (merge
         (attr->ast attr)
         {:args args}))
-    (and
-      (list? node) (= (count node) 3))
-    (let [[fun attr args] node]
-      (merge
-        (attr->ast attr)
-        {:fun fun
-         :args args}))
     :else (attr->ast node)))
 
 (defn- ast->attr [ast]
@@ -62,18 +40,14 @@
       attr)))
 
 (defn ast->node [ast]
-  (let [{:keys [fun args]} ast
+  (let [{:keys [args]} ast
         attr (ast->attr ast)]
     (cond
-      fun `(~fun ~attr ~args)
       args `(~attr ~args)
       :else attr)))
 
 (defn attr [node]
   (-> node node->ast :attr))
-
-(defn fun [node]
-  (-> node node->ast :fun))
 
 (defn args [node]
   (-> node node->ast :args))
