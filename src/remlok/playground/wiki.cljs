@@ -4,7 +4,7 @@
   (:require
     [reagent.ratom :refer-macros [reaction]]
     [remlok.router :refer [route]]
-    [remlok.loc :refer [pub sub rpub rsub mut mut! syncf mergef]]
+    [remlok.loc :refer [pub sub rpub rsub mut mut! syncf]]
     [remlok.query :as q]))
 
 (defn wiki [s res]
@@ -18,15 +18,15 @@
     (get @db :search)))
 (defmethod pubf :sugg [db node]
   (reaction
-    (get-in @db [:sugg (-> node q/node->ast :args)])))
+    (get-in @db [:sugg (q/args node)])))
 
 (defmulti mutf route)
 (defmethod mutf :search [db node]
-  (assoc db :search (-> node q/node->ast :args)))
+  (assoc db :search (q/args node)))
 
 (defmulti rpubf route)
 (defmethod rpubf :sugg [db node]
-  (let [s (-> node q/node->ast :args)]
+  (let [s (q/args node)]
     (when
       (and
         (> (count s) 2)

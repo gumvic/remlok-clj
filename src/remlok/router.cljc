@@ -3,7 +3,7 @@
     [remlok.query :as q]))
 
 (defn- route* [node]
-  (-> node q/node->ast :attr))
+  (q/attr node))
 
 (defn route
   ([_ node]

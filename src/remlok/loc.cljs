@@ -122,7 +122,7 @@
         rs (into
              []
              (for [node query
-                   :let [a (-> node q/node->ast :attr)
+                   :let [a (q/attr node)
                          r (f db node ctx)]
                    :when r]
                [a r]))]
@@ -150,7 +150,7 @@
   (reduce @mutf db query))
 
 (defn- rmut* [node]
-  (@rmutf @db node))
+  (@rmutf (peek db) node))
 
 (defn- rmut [query]
   (into

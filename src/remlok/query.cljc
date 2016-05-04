@@ -68,3 +68,12 @@
       fun `(~fun ~attr ~args)
       args `(~attr ~args)
       :else attr)))
+
+(defn attr [node]
+  (-> node node->ast :attr))
+
+(defn fun [node]
+  (-> node node->ast :fun))
+
+(defn args [node]
+  (-> node node->ast :args))
