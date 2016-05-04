@@ -4,7 +4,7 @@
   (:require
     [reagent.ratom :refer-macros [reaction]]
     [remlok.router :refer [route]]
-    [remlok.loc :refer [pub sub rpub rsub mut mut! syncf ui]]
+    [remlok.loc :refer [pub sub rpub rsub mut mut! syncf mergef]]
     [remlok.query :as q]))
 
 (defn wiki [s res]
@@ -33,9 +33,15 @@
 (defmethod rpubf :default []
   nil)
 
+(defn deep-merge [a b]
+  (if (and (map? a) (map? b))
+    (merge-with deep-merge a b)
+    b))
+
 (pub pubf)
 (mut mutf)
 (rpub rpubf)
+(mergef deep-merge)
 (syncf
   (fn [req res]
     #_(println req)
@@ -54,21 +60,6 @@
          {:on-change #(mut! `[(:search ~(-> % .-target .-value))])
           :value (str search)}]))))
 
-#_(defn list []
-  (let [search (sub [:search])
-        props (reaction
-                (let [{:keys [search]} @search]
-                  (println 123)
-                  ;;@(sub `[(:sugg ~search)])
-                  (sub `[(:sugg ~search)])))]
-    (fn []
-      (let [{:keys [sugg]} @@props]
-        [:ul
-         (map
-           (fn [s]
-             [:li (str s)])
-           sugg)]))))
-
 (defn list []
   (let [props (reaction
                 (let [{:keys [search]} @(sub [:search])]
@@ -81,28 +72,6 @@
            (fn [s]
              [:li (str s)])
            sugg)]))))
-
-#_(def input
-  (ui
-    (constantly [:search])
-    (fn [{:keys [search]}]
-      [:input
-       {:on-change #(mut! `[(:search ~(-> % .-target .-value))])
-        :value (str search)}])))
-
-#_(def list
-  (ui
-    (fn []
-      [:search])
-    (fn [{:keys [search]}]
-      `[(:sugg ~search)])
-    (fn [{:keys [sugg] :as p}]
-      ;;(println "props " p)
-      [:ul
-       (map
-         (fn [s]
-           [:li (str s)])
-         sugg)])))
 
 (defn root []
   [:div
