@@ -27,21 +27,17 @@
 (defmulti rpubf route)
 (defmethod rpubf :sugg [db node]
   (let [s (-> node q/node->ast :args)]
-    (when (> (count s) 2)
-      (when-not (get-in db [:sugg s])
-        `(:sugg ~s)))))
+    (when
+      (and
+        (> (count s) 2)
+        (not (get-in db [:sugg s])))
+      `(:sugg ~s))))
 (defmethod rpubf :default []
   nil)
-
-(defn deep-merge [a b]
-  (if (and (map? a) (map? b))
-    (merge-with deep-merge a b)
-    b))
 
 (pub pubf)
 (mut mutf)
 (rpub rpubf)
-(mergef deep-merge)
 (syncf
   (fn [req res]
     (let [s (-> (get req :subs)

@@ -15,12 +15,17 @@
 ;; Sync ;;
 ;;;;;;;;;;
 
+(defn deep-merge [a b]
+  (if (and (map? a) (map? b))
+    (merge-with deep-merge a b)
+    b))
+
 (def ^:private sync
   (atom {:scheduled? false
          :subs []
          :muts []
          :syncf #(%2 nil)
-         :mergef merge}))
+         :mergef deep-merge}))
 
 (defn syncf [f]
   (swap! sync assoc :syncf f))
