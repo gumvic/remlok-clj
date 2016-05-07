@@ -1,20 +1,10 @@
 (ns remlok.playground.counter
   (:require
-    [remlok.router :refer [route]]
     [remlok.loc :refer [pub sub mut mut!]]))
 
-(defmulti pubf route)
-(defmethod pubf :counter [db]
-  db)
-
-(defmulti mutf route)
-(defmethod mutf :inc [db]
-  (inc db))
-(defmethod mutf :dec [db]
-  (dec db))
-
-(pub pubf)
-(mut mutf)
+(pub :counter (fn [db] db))
+(mut :dec dec)
+(mut :inc inc)
 
 (defn root []
   (let [props (sub [:counter])]

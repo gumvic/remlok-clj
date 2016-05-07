@@ -83,32 +83,31 @@
   (binding [*ratom-context* nil]
     (-deref r)))
 
-(def ^:private pubf
-  (atom (fn [])))
+(def ^:private pubs
+  (atom {}))
 
-(def ^:private mutf
-  (atom (fn [])))
+(def ^:private muts
+  (atom {}))
 
-(def ^:private rpubf
-  (atom (fn [])))
+(defn pub [attr f]
+  (swap! pubs assoc-in [:loc attr] f))
 
-(def ^:private rmutf
-  (atom (fn [])))
+(defn mut [attr f]
+  (swap! muts assoc-in [:loc attr] f))
 
-(defn pub [f]
-  (reset! pubf f))
+(defn rpub [attr f]
+  (swap! pubs assoc-in [:rem attr] f))
 
-(defn mut [f]
-  (reset! mutf f))
-
-(defn rpub [f]
-  (reset! rpubf f))
-
-(defn rmut [f]
-  (reset! rmutf f))
+(defn rmut [attr f]
+  (swap! muts assoc-in [:rem attr] f))
 
 (defn- rsub** [node ctx]
-  (@rpubf (peek db) node ctx))
+  (let [attr (q/attr node)
+        f (->>
+            (constantly nil)
+            (get-in @pubs [:rem :default])
+            (get-in @pubs [:rem attr]))]
+    (f (peek db) node ctx)))
 
 (defn- rsub* [query ctx]
   (not-empty
@@ -125,15 +124,23 @@
   ([query ctx]
     (rsub* query ctx)))
 
+(defn- sub** [node ctx]
+  (let [attr (q/attr node)
+        f (->>
+            (constantly nil)
+            (get-in @pubs [:loc :default])
+            (get-in @pubs [:loc attr]))
+        r (f db node ctx)]
+    (when r
+      [attr r])))
+
 (defn- sub* [query ctx]
-  (let [f @pubf
-        rs (into
+  (let [rs (into
              []
-             (for [node query
-                   :let [a (q/attr node)
-                         r (f db node ctx)]
-                   :when r]
-               [a r]))]
+             (comp
+               (map #(sub** % ctx))
+               (filter some?))
+             query)]
     (reaction
       (not-empty
         (into
@@ -154,11 +161,24 @@
          (rsub query))
        (sub* query ctx)))))
 
+(defn- mut** [db node]
+  (let [attr (q/attr node)
+        f (->>
+            (fn [db] db)
+            (get-in @muts [:loc :default])
+            (get-in @muts [:loc attr]))]
+    (f db node)))
+
 (defn- mut* [db query]
-  (reduce @mutf db query))
+  (reduce mut** db query))
 
 (defn- rmut* [node]
-  (@rmutf (peek db) node))
+  (let [attr (q/attr node)
+        f (->>
+            (constantly nil)
+            (get-in @muts [:rem :default])
+            (get-in @muts [:rem attr]))]
+    (f (peek db) node)))
 
 (defn- rmut [query]
   (into
