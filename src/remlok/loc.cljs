@@ -8,6 +8,10 @@
 
 ;; TODO split into namespaces (should be relatively easy)
 
+;;;;;;;;
+;; DB ;;
+;;;;;;;;
+
 (def ^:private db
   (r/atom nil))
 
@@ -70,6 +74,10 @@
 
 (defn- reactive? [x]
   (implements? IReactiveAtom x))
+
+(defn- make-shield [f]
+  (binding [*ratom-context* nil]
+    (f)))
 
 (defn- peek [r]
   (binding [*ratom-context* nil]
