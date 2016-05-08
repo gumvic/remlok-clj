@@ -58,8 +58,9 @@
           :value (str search)}]))))
 
 (defn list []
-  (let [props (reaction
-                (let [{:keys [search]} @(sub [:search])]
+  (let [search (sub [:search])
+        props (reaction
+                (let [{:keys [search]} @search]
                   @(sub `[(:sugg ~search)])))]
     (fn []
       (let [{:keys [sugg]} @props]
