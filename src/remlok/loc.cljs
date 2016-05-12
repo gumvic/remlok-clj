@@ -6,8 +6,6 @@
      :refer [*ratom-context* make-reaction IReactiveAtom]]
     [remlok.query :as q]))
 
-;; TODO split into namespaces (should be relatively easy)
-
 ;;;;;;;;
 ;; DB ;;
 ;;;;;;;;
