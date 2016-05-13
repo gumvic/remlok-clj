@@ -90,15 +90,12 @@
     {:default (fn [db] {:loc db})}))
 
 (defn pub [attr f]
-  (swap! pubs assoc-in [:loc attr] f))
+  (swap! pubs assoc attr f))
 
 (defn mut [attr f]
   (swap! muts assoc attr f))
 
-(defn rpub [attr f]
-  (swap! pubs assoc-in [:rem attr] f))
-
-(defn- rsub** [node ctx]
+#_(defn- rsub** [node ctx]
   (let [attr (q/attr node)
         f (->>
             (constantly nil)
@@ -106,7 +103,7 @@
             (get-in @pubs [:rem attr]))]
     (f (peek db) node ctx)))
 
-(defn- rsub* [query ctx]
+#_(defn- rsub* [query ctx]
   (not-empty
     (into
       []
@@ -115,13 +112,13 @@
         (filter some?))
       query)))
 
-(defn rsub
+#_(defn rsub
   ([query]
     (rsub query nil))
   ([query ctx]
     (rsub* query ctx)))
 
-(defn- sub** [node ctx]
+#_(defn- sub** [node ctx]
   (let [attr (q/attr node)
         f (->>
             (constantly nil)
@@ -131,7 +128,7 @@
     (when r
       [attr r])))
 
-(defn- sub* [query ctx]
+#_(defn- sub* [query ctx]
   (let [rs (into
              []
              (comp
@@ -145,9 +142,9 @@
           (for [[a r] rs]
             [a @r]))))))
 
-(def ^:private ^:dynamic *in-sub?* false)
+#_(def ^:private ^:dynamic *in-sub?* false)
 
-(defn sub
+#_(defn sub
   ([query]
    (sub query nil))
   ([query ctx]
@@ -158,10 +155,33 @@
          (rsub query))
        (sub* query ctx)))))
 
+;; TODO recursive subs
+;; TODO shield everything under sub
+(defn- sub* [node]
+  (let [attr (q/attr node)
+        df (get @pubs :default)
+        f (get @pubs attr df)
+        {:keys [loc rem]} (f db node)
+        loc (when loc [attr loc])]
+    {:loc loc
+     :rem rem}))
+
+(defn sub [query]
+  (let [rs (mapv sub* query)
+        loc (into [] (comp (map :loc) (filter some?)) rs)
+        rem (into [] (comp (map :rem) (filter some?)) rs)]
+    (sched-sub! rem)
+    (reaction
+      (into
+        {}
+        (for [[a r] loc]
+          [a @r])))))
+
 (defn mut! [node]
   (let [attr (q/attr node)
         df (get @muts :default)
         f (get @muts attr df)
         {:keys [loc rem]} (f (peek db) node)]
     (sched-mut! rem)
-    (reset! db loc)))
+    (reset! db loc)
+    nil))

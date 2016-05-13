@@ -3,7 +3,7 @@
            [goog.net Jsonp])
   (:require
     [reagent.ratom :refer-macros [reaction]]
-    [remlok.loc :refer [pub sub rpub rsub mut mut! syncf]]
+    [remlok.loc :refer [pub sub mut mut! syncf]]
     [remlok.query :as q]))
 
 (defn wiki [s res]
@@ -11,20 +11,20 @@
         gjsonp (Jsonp. (Uri. (str uri s)))]
     (.send gjsonp nil (comp res second))))
 
-(pub
+#_(pub
   :search
   (fn [db]
     (reaction
       (get @db :search))))
 
-(pub
+#_(pub
   :sugg
   (fn [db node]
     (let [s (q/args node)]
       (reaction
         (get-in @db [:sugg s])))))
 
-(rpub
+#_(rpub
   :sugg
   (fn [db node]
     (let [s (q/args node)]
@@ -34,13 +34,13 @@
           (not (get-in db [:sugg s])))
         `(:sugg ~s)))))
 
-(mut
+#_(mut
   :search
   (fn [db node]
     (let [s (q/args node)]
       (assoc db :search s))))
 
-(syncf
+#_(syncf
   (fn [req res]
     (let [s (-> (get req :subs)
                 first
@@ -49,7 +49,7 @@
                 :args)]
       (wiki s #(res {:sugg {s %}})))))
 
-(defn input []
+#_(defn input []
   (let [props (sub [:search])]
     (fn []
       (let [{:keys [search]} @props]
@@ -57,7 +57,7 @@
          {:on-change #(mut! `[(:search ~(-> % .-target .-value))])
           :value (str search)}]))))
 
-(defn list []
+#_(defn list []
   (let [search (sub [:search])
         props (reaction
                 (let [{:keys [search]} @search]
@@ -70,7 +70,7 @@
              [:li (str s)])
            sugg)]))))
 
-(defn root []
+#_(defn root []
   [:div
    [input]
    [list]])
