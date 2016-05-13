@@ -17,18 +17,27 @@
 ;; Sync ;;
 ;;;;;;;;;;
 
-(defn deep-merge [a b]
+#_(defn deep-merge [a b]
   (if (and (map? a) (map? b))
     (merge-with deep-merge a b)
     b))
 
+;; TODO default nov-read doesn't know what to do with joins
 (def ^:private syncing
   (atom {:scheduled? false
          :reads []
          :muts []
          :sync #(%2 nil)
-         :sync-read (fn [db _ n] (deep-merge db n))
-         :sync-mut (fn [db _ n] (deep-merge db n))}))
+         :nov-read (fn [db query tree]
+                     (reduce
+                       #(let [{:keys [attr args]} (q/ast %2)
+                              tree* (get tree attr)]
+                         (if args
+                           (assoc-in %1 [attr args] tree*)
+                           (assoc %1 attr tree*)))
+                       db
+                       query))
+         :nov-mut (fn [db] db)}))
 
 (defn sync [f]
   (swap! syncing assoc :sync f))
@@ -41,13 +50,13 @@
     nov))
 
 (defn nov! [nov]
-  (let [{:keys [sync-read sync-mut]} @syncing
+  (let [{:keys [nov-read nov-mut]} @syncing
         {:keys [reads muts]} nov]
     (swap!
       db
       #(-> %
-           (nov* sync-read reads)
-           (nov* sync-mut muts)))))
+           (nov* nov-read reads)
+           (nov* nov-mut muts)))))
 
 (defn- sync! []
   (let [{:keys [sync reads muts]} @syncing
