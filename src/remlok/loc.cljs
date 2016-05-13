@@ -61,9 +61,9 @@
     (swap! sync update :subs conj query)
     (sched-sync!)))
 
-(defn- sched-mut! [query]
-  (when (seq query)
-    (swap! sync update :muts conj query)
+(defn- sched-mut! [node]
+  (when node
+    (swap! sync update :muts conj node)
     (sched-sync!)))
 
 ;;;;;;;;;;;;;;;
@@ -82,22 +82,21 @@
     (-deref r)))
 
 (def ^:private pubs
-  (atom {}))
+  (atom
+    {:default (fn [] nil)}))
 
 (def ^:private muts
-  (atom {}))
+  (atom
+    {:default (fn [db] {:loc db})}))
 
 (defn pub [attr f]
   (swap! pubs assoc-in [:loc attr] f))
 
 (defn mut [attr f]
-  (swap! muts assoc-in [:loc attr] f))
+  (swap! muts assoc attr f))
 
 (defn rpub [attr f]
   (swap! pubs assoc-in [:rem attr] f))
-
-(defn rmut [attr f]
-  (swap! muts assoc-in [:rem attr] f))
 
 (defn- rsub** [node ctx]
   (let [attr (q/attr node)
@@ -159,35 +158,10 @@
          (rsub query))
        (sub* query ctx)))))
 
-(defn- mut** [db node]
+(defn mut! [node]
   (let [attr (q/attr node)
-        f (->>
-            (fn [db] db)
-            (get-in @muts [:loc :default])
-            (get-in @muts [:loc attr]))]
-    (f db node)))
-
-(defn- mut* [db query]
-  (reduce mut** db query))
-
-(defn- rmut* [node]
-  (let [attr (q/attr node)
-        f (->>
-            (constantly nil)
-            (get-in @muts [:rem :default])
-            (get-in @muts [:rem attr]))]
-    (f (peek db) node)))
-
-(defn- rmut [query]
-  (into
-    []
-    (comp
-      (map rmut*)
-      (filter some?))
-    query))
-
-(defn mut! [query]
-  (sched-mut!
-    (rmut query))
-  (swap! db mut* query)
-  nil)
+        df (get @muts :default)
+        f (get @muts attr df)
+        {:keys [loc rem]} (f (peek db) node)]
+    (sched-mut! rem)
+    (reset! db loc)))

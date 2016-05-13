@@ -4,7 +4,7 @@
   (:require
     [reagent.core :refer [render]]
     [remlok.loc :refer [sub]]
-    [remlok.playground.wiki :refer [root]]))
+    [remlok.playground.counter :refer [root]]))
 
 (render
   [root]

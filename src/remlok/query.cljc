@@ -24,7 +24,7 @@
                    :join join})
     :else nil))
 
-(defn node->ast [node]
+(defn ast [node]
   (cond
     (list? node)
     (let [[attr args] node]
@@ -39,7 +39,7 @@
       {attr join}
       attr)))
 
-(defn ast->node [ast]
+(defn node [ast]
   (let [{:keys [args]} ast
         attr (ast->attr ast)]
     (cond
@@ -47,7 +47,7 @@
       :else attr)))
 
 (defn attr [node]
-  (-> node node->ast :attr))
+  (-> node ast :attr))
 
 (defn args [node]
-  (-> node node->ast :args))
+  (-> node ast :args))
