@@ -22,49 +22,58 @@
     (merge-with deep-merge a b)
     b))
 
-(def ^:private sync
+(def ^:private syncing
   (atom {:scheduled? false
-         :subs []
+         :reads []
          :muts []
-         :syncf #(%2 nil)
-         :mergef deep-merge}))
+         :sync #(%2 nil)
+         :sync-read (fn [db _ n] (deep-merge db n))
+         :sync-mut (fn [db _ n] (deep-merge db n))}))
 
-(defn syncf [f]
-  (swap! sync assoc :syncf f))
+(defn sync [f]
+  (swap! syncing assoc :sync f))
 
-(defn mergef [f]
-  (swap! sync assoc :mergef f))
+(defn- nov* [db f nov]
+  (reduce
+    (fn [db [q n]]
+      (f db q n))
+    db
+    nov))
 
-(defn merge! [tree]
-  (println tree)
-  #_(let [{:keys [mergef]} @sync]
-    (swap! db mergef tree)))
+(defn nov! [nov]
+  (let [{:keys [sync-read sync-mut]} @syncing
+        {:keys [reads muts]} nov]
+    (swap!
+      db
+      #(-> %
+           (nov* sync-read reads)
+           (nov* sync-mut muts)))))
 
 (defn- sync! []
-  (let [{:keys [syncf subs muts]} @sync
+  (let [{:keys [sync reads muts]} @syncing
         sync* (merge
-               (when (seq subs) {:subs subs})
+               (when (seq reads) {:reads reads})
                (when (seq muts) {:muts muts}))]
     (when (seq sync*)
-      (syncf sync* merge!)
-      (swap! sync merge {:scheduled? false
-                          :subs []
-                          :muts []}))))
+      (sync sync* nov!)
+      (swap! syncing merge {:scheduled? false
+                            :reads []
+                            :muts []}))))
 
 (defn- sched-sync! []
-  (let [{:keys [scheduled?]} @sync]
+  (let [{:keys [scheduled?]} @syncing]
     (when-not scheduled?
-      (swap! sync assoc :scheduled? true)
+      (swap! syncing assoc :scheduled? true)
       (js/setTimeout sync! 0))))
 
-(defn- sched-sub! [query]
+(defn- sched-read! [query]
   (when (seq query)
-    (swap! sync update :subs conj query)
+    (swap! syncing update :reads conj query)
     (sched-sync!)))
 
 (defn- sched-mut! [node]
   (when node
-    (swap! sync update :muts conj node)
+    (swap! syncing update :muts conj node)
     (sched-sync!)))
 
 ;;;;;;;;;;;;;;;
@@ -171,7 +180,7 @@
              (mapv sub* query))
         loc (into [] (comp (map :loc) (filter some?)) rs)
         rem (into [] (comp (map :rem) (filter some?)) rs)]
-    (sched-sub! rem)
+    (sched-read! rem)
     (reaction
       (into
         {}

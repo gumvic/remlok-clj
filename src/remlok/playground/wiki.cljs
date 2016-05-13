@@ -47,22 +47,22 @@
     (let [s (q/args node)]
       {:loc (assoc db :search s)})))
 
-(l/syncf
-  (fn [{:keys [subs]} res]
-    (let [subs* (a/map
-                  (fn [& qr]
-                    (into {} qr))
-                  (for [q subs]
-                    (a/map
-                      (fn [& ar]
-                        [q (into {} ar)])
-                      (map
-                        (fn [[a r]]
-                          (let [ch (chan)]
-                            (take! r #(put! ch [a %]))
-                            ch))
-                        (r/read q)))))]
-      (take! subs* #(res {:subs %})))))
+(l/sync
+  (fn [{:keys [reads]} res]
+    (let [reads* (a/map
+                   (fn [& qr]
+                     (into {} qr))
+                   (for [q reads]
+                     (a/map
+                       (fn [& ar]
+                         [q (into {} ar)])
+                       (map
+                         (fn [[a r]]
+                           (let [ch (chan)]
+                             (take! r #(put! ch [a %]))
+                             ch))
+                         (r/read q)))))]
+      (take! reads* #(res {:reads %})))))
 
 (defn input []
   (let [props (l/sub [:search])]
