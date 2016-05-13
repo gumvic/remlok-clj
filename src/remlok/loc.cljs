@@ -156,7 +156,6 @@
        (sub* query ctx)))))
 
 ;; TODO recursive subs
-;; TODO shield everything under sub
 (defn- sub* [node]
   (let [attr (q/attr node)
         df (get @pubs :default)
@@ -167,7 +166,8 @@
      :rem rem}))
 
 (defn sub [query]
-  (let [rs (mapv sub* query)
+  (let [rs (binding [*ratom-context* nil]
+             (mapv sub* query))
         loc (into [] (comp (map :loc) (filter some?)) rs)
         rem (into [] (comp (map :rem) (filter some?)) rs)]
     (sched-sub! rem)
