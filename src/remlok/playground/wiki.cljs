@@ -3,21 +3,31 @@
            [goog.net Jsonp])
   (:require
     [reagent.ratom :refer-macros [reaction]]
-    [remlok.loc :refer [pub sub mut mut! syncf]]
-    [remlok.query :as q]))
+    [remlok.loc :as l]
+    [remlok.rem :as r]
+    [remlok.query :as q]
+    [cljs.core.async :as a :refer [chan put! take!]]))
 
-(defn wiki [s res]
+(defn wiki [s]
   (let [uri "http://en.wikipedia.org/w/api.php?action=opensearch&format=json&search="
-        gjsonp (Jsonp. (Uri. (str uri s)))]
-    (.send gjsonp nil (comp res second))))
+        gjsonp (Jsonp. (Uri. (str uri s)))
+        ch (chan)]
+    (.send gjsonp nil #(put! ch (second %)))
+    ch))
 
-(pub
+(r/pub
+  :sugg
+  (fn [node]
+    (let [s (q/args node)]
+      (wiki s))))
+
+(l/pub
   :search
   (fn [db]
     {:loc (reaction
             (get @db :search))}))
 
-(pub
+(l/pub
   :sugg
   (fn [db node]
     (let [s (q/args node)]
@@ -31,34 +41,42 @@
            (not (get-in @db [:sugg s])))
          `(:sugg ~s))})))
 
-(mut
+(l/mut
   :search
   (fn [db node]
     (let [s (q/args node)]
       {:loc (assoc db :search s)})))
 
-(syncf
-  (fn [req res]
-    (let [s (-> (get req :subs)
-                first
-                first
-                q/ast
-                :args)]
-      (wiki s #(res {:sugg {s %}})))))
+(l/syncf
+  (fn [{:keys [subs]} res]
+    (let [subs* (a/map
+                  (fn [& qr]
+                    (into {} qr))
+                  (for [q subs]
+                    (a/map
+                      (fn [& ar]
+                        [q (into {} ar)])
+                      (map
+                        (fn [[a r]]
+                          (let [ch (chan)]
+                            (take! r #(put! ch [a %]))
+                            ch))
+                        (r/read q)))))]
+      (take! subs* #(res {:subs %})))))
 
 (defn input []
-  (let [props (sub [:search])]
+  (let [props (l/sub [:search])]
     (fn []
       (let [{:keys [search]} @props]
         [:input
-         {:on-change #(mut! `(:search ~(-> % .-target .-value)))
+         {:on-change #(l/mut! `(:search ~(-> % .-target .-value)))
           :value (str search)}]))))
 
 (defn list []
-  (let [search (sub [:search])
+  (let [search (l/sub [:search])
         props (reaction
                 (let [{:keys [search]} @search]
-                  @(sub `[(:sugg ~search)])))]
+                  @(l/sub `[(:sugg ~search)])))]
     (fn []
       (let [{:keys [sugg]} @props]
         [:ul

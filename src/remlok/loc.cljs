@@ -36,7 +36,8 @@
   (swap! sync assoc :mergef f))
 
 (defn merge! [tree]
-  (let [{:keys [mergef]} @sync]
+  (println tree)
+  #_(let [{:keys [mergef]} @sync]
     (swap! db mergef tree)))
 
 (defn- sync! []
@@ -83,7 +84,7 @@
 
 (def ^:private pubs
   (atom
-    {:default (fn [] nil)}))
+    {:default (fn [])}))
 
 (def ^:private muts
   (atom
