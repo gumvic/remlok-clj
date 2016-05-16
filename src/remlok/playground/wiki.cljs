@@ -8,6 +8,10 @@
     [remlok.query :as q]
     [cljs.core.async :as a :refer [chan put! take!]]))
 
+;;;;;;;;;;;;
+;; Remote ;;
+;;;;;;;;;;;;
+
 (defn wiki [s]
   (let [uri "http://en.wikipedia.org/w/api.php?action=opensearch&format=json&search="
         gjsonp (Jsonp. (Uri. (str uri s)))
@@ -20,6 +24,20 @@
   (fn [query]
     (let [s (q/args query)]
       (wiki s))))
+
+(defn receive [{:keys [reads]} res]
+  (let [reads* (a/map
+                 vector
+                 (for [q reads
+                       :let [ch (r/read q)]]
+                   (let [ch* (chan)]
+                     (take! ch #(put! ch* [q %]))
+                     ch*)))]
+    (take! reads* #(res {:reads %}))))
+
+;;;;;;;;;;;
+;; Local ;;
+;;;;;;;;;;;
 
 (l/pub
   :search
@@ -54,15 +72,8 @@
       (assoc-in db [:sugg s] data))))
 
 (l/send
-  (fn [{:keys [reads]} res]
-    (let [reads* (a/map
-                   vector
-                   (for [q reads
-                         :let [ch (r/read q)]]
-                     (let [ch* (chan)]
-                       (take! ch #(put! ch* [q %]))
-                       ch*)))]
-      (take! reads* #(res {:reads %})))))
+  (fn [req res]
+    (receive req res)))
 
 (defn input []
   (let [search (l/sub [:search])]
@@ -79,6 +90,7 @@
       [:ul
        (map
          (fn [s]
+           ^{:key (str s)}
            [:li (str s)])
          @sugg)])))
 

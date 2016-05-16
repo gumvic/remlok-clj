@@ -10,10 +10,6 @@
 (defn- select-fun [fs query]
   (get fs (q/topic query) (get fs :default)))
 
-;;;;;;;;;;
-;; Sync ;;
-;;;;;;;;;;
-
 ;;;;;;;;;;;;;;;
 ;; Pub / Sub ;;
 ;;;;;;;;;;;;;;;
