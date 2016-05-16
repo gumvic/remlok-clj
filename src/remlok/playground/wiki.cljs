@@ -88,11 +88,9 @@
                @(l/sub [:sugg @search]))]
     (fn []
       [:ul
-       (map
-         (fn [s]
-           ^{:key (str s)}
-           [:li (str s)])
-         @sugg)])))
+       (for [s @sugg]
+         ^{:key (str s)}
+         [:li (str s)])])))
 
 (defn root []
   [:div
