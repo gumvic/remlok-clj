@@ -15,22 +15,22 @@
     (.send gjsonp nil #(put! ch (second %)))
     ch))
 
-#_(r/pub
+(r/pub
   :sugg
-  (fn [node]
-    (let [s (q/args node)]
+  (fn [query]
+    (let [s (q/args query)]
       (wiki s))))
 
-#_(l/pub
+(l/pub
   :search
   (fn [db]
     {:loc (reaction
             (get @db :search))}))
 
-#_(l/pub
+(l/pub
   :sugg
-  (fn [db node]
-    (let [s (q/args node)]
+  (fn [db query]
+    (let [s (q/args query)]
       {:loc
        (reaction
          (get-in @db [:sugg s]))
@@ -39,7 +39,7 @@
          (and
            (> (count s) 2)
            (not (get-in @db [:sugg s])))
-         `(:sugg ~s))})))
+         [:sugg s])})))
 
 (l/mut
   :search
@@ -47,42 +47,40 @@
     (let [s (q/args query)]
       {:loc (assoc db :search s)})))
 
-#_(l/sync
+(l/merge
+  :sugg
+  (fn [db query data]
+    (let [s (q/args query)]
+      (assoc-in db [:sugg s] data))))
+
+(l/send
   (fn [{:keys [reads]} res]
     (let [reads* (a/map
-                   (fn [& qr]
-                     (into {} qr))
-                   (for [q reads]
-                     (a/map
-                       (fn [& ar]
-                         [q (into {} ar)])
-                       (map
-                         (fn [[a r]]
-                           (let [ch (chan)]
-                             (take! r #(put! ch [a %]))
-                             ch))
-                         (r/read q)))))]
+                   vector
+                   (for [q reads
+                         :let [ch (r/read q)]]
+                     (let [ch* (chan)]
+                       (take! ch #(put! ch* [q %]))
+                       ch*)))]
       (take! reads* #(res {:reads %})))))
 
 (defn input []
   (let [search (l/sub [:search])]
     (fn []
       [:input
-       {:on-change #(l/mut! `[:search ~(-> % .-target .-value)])
+       {:on-change #(l/mut! [:search (-> % .-target .-value)])
         :value (str @search)}])))
 
 (defn list []
   (let [search (l/sub [:search])
-        props (reaction
-                (let [{:keys [search]} @search]
-                  @(l/sub `[(:sugg ~search)])))]
+        sugg (reaction
+               @(l/sub [:sugg @search]))]
     (fn []
-      (let [{:keys [sugg]} @props]
-        [:ul
-         (map
-           (fn [s]
-             [:li (str s)])
-           sugg)]))))
+      [:ul
+       (map
+         (fn [s]
+           [:li (str s)])
+         @sugg)])))
 
 (defn root []
   [:div
