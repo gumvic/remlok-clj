@@ -17,11 +17,6 @@
 ;; Sync ;;
 ;;;;;;;;;;
 
-#_(defn deep-merge [a b]
-  (if (and (map? a) (map? b))
-    (merge-with deep-merge a b)
-    b))
-
 ;; TODO default nov-read doesn't know what to do with joins
 (def ^:private syncing
   (atom {:scheduled? false
