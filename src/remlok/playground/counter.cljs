@@ -7,9 +7,9 @@
 (mut :inc (fn [db] {:loc (inc db)}))
 
 (defn root []
-  (let [props (sub [:counter])]
+  (let [counter (sub [:counter])]
     (fn []
       [:div
-       [:button {:on-click #(mut! :dec)} "-"]
-       [:span (str (get @props :counter))]
-       [:button {:on-click #(mut! :inc)} "+"]])))
+       [:button {:on-click #(mut! [:dec])} "-"]
+       [:span (str @counter)]
+       [:button {:on-click #(mut! [:inc])} "+"]])))
