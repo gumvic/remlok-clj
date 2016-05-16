@@ -5,7 +5,6 @@
     [reagent.ratom :refer-macros [reaction]]
     [remlok.loc :as l]
     [remlok.rem :as r]
-    [remlok.query :as q]
     [cljs.core.async :as a :refer [chan put! take!]]))
 
 ;;;;;;;;;;;;
@@ -21,9 +20,8 @@
 
 (r/pub
   :sugg
-  (fn [query]
-    (let [s (q/args query)]
-      (wiki s))))
+  (fn [[_ search]]
+    (wiki search)))
 
 (defn receive [{:keys [reads]} res]
   (let [reads* (a/map
@@ -47,29 +45,26 @@
 
 (l/pub
   :sugg
-  (fn [db query]
-    (let [s (q/args query)]
-      {:loc
-       (reaction
-         (get-in @db [:sugg s]))
-       :rem
-       (when
-         (and
-           (> (count s) 2)
-           (not (get-in @db [:sugg s])))
-         [:sugg s])})))
+  (fn [db [_ search]]
+    {:loc
+     (reaction
+       (get-in @db [:sugg search]))
+     :rem
+     (when
+       (and
+         (> (count search) 2)
+         (not (get-in @db [:sugg search])))
+       [:sugg search])}))
 
 (l/mut
   :search
-  (fn [db query]
-    (let [s (q/args query)]
-      {:loc (assoc db :search s)})))
+  (fn [db [_ search]]
+    {:loc (assoc db :search search)}))
 
 (l/merge
   :sugg
-  (fn [db query data]
-    (let [s (q/args query)]
-      (assoc-in db [:sugg s] data))))
+  (fn [db [_ search] data]
+    (assoc-in db [:sugg search] data)))
 
 (l/send
   (fn [req res]

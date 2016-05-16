@@ -1,14 +1,12 @@
 (ns remlok.rem
-  (:refer-clojure :exclude [read])
-  (:require
-    [remlok.query :as q]))
+  (:refer-clojure :exclude [read]))
 
 ;;;;;;;;;;;;;
 ;; Helpers ;;
 ;;;;;;;;;;;;;
 
-(defn- select-fun [fs query]
-  (get fs (q/topic query) (get fs :default)))
+(defn- select-fun [fs [topic _]]
+  (get fs topic (get fs :default)))
 
 ;;;;;;;;;;;;;;;
 ;; Pub / Sub ;;

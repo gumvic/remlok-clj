@@ -4,15 +4,14 @@
     [reagent.core :as r]
     [reagent.ratom
      :refer-macros [reaction]
-     :refer [*ratom-context*]]
-    [remlok.query :as q]))
+     :refer [*ratom-context*]]))
 
 ;;;;;;;;;;;;;
 ;; Helpers ;;
 ;;;;;;;;;;;;;
 
-(defn- select-fun [fs query]
-  (get fs (q/topic query) (get fs :default)))
+(defn- select-fun [fs [topic _]]
+  (get fs topic (get fs :default)))
 
 (defn- make-shield [f]
   (binding [*ratom-context* nil]
@@ -36,10 +35,10 @@
          :muts []
          :send #(%2 nil)
          :merge {:default
-                 (fn [db query data]
-                   (let [topic (q/topic query)
-                         args (q/args query)]
-                     (assoc-in db [topic args] data)))}}))
+                 (fn [db [topic args] data]
+                   (if (some? args)
+                     (assoc-in db [topic args] data)
+                     (assoc db topic data)))}}))
 
 (defn send [f]
   (swap! sync assoc :send f))
@@ -97,19 +96,18 @@
 ;; TODO should default pub try to synchronize if there's nothing in the db?
 (def ^:private pubs
   (atom
-    {:default (fn [db query]
-                (let [topic (q/topic query)
-                      args (q/args query)]
-                  {:loc (reaction
-                          (get-in @db [topic args]))}))}))
+    {:default (fn [db [topic args]]
+                {:loc (if (some? args)
+                        (reaction
+                          (get-in @db [topic args]))
+                        (reaction
+                          (get @db topic)))})}))
 
 ;; TODO should default mut try to synchronize?
 (def ^:private muts
   (atom
-    {:default (fn [db query]
-                (let [topic (q/topic query)
-                      args (q/args query)]
-                  {:loc (assoc db topic args)}))}))
+    {:default (fn [db [topic args]]
+                {:loc (assoc db topic args)})}))
 
 (defn pub [topic f]
   (swap! pubs assoc topic f))
