@@ -1,9 +1,7 @@
 (ns remlok.loc
   (:require
     [reagent.core :as r]
-    [reagent.ratom
-     :refer-macros [reaction]
-     :refer [*ratom-context* make-reaction IReactiveAtom]]
+    [reagent.ratom :refer [*ratom-context*]]
     [remlok.query :as q]))
 
 ;;;;;;;;
@@ -94,36 +92,6 @@
   (let [topic (q/topic query)
         f (topic-f @muts topic)
         {:keys [loc rem]} (make-shield #(f @db query))]
-    (sched-mut! rem)
-    (reset! db loc)
-    nil))
-
-#_(defn- sub* [node]
-  (let [attr (q/attr node)
-        df (get @pubs :default)
-        f (get @pubs attr df)
-        {:keys [loc rem]} (f db node)
-        loc (when loc [attr loc])]
-    {:loc loc
-     :rem rem}))
-
-#_(defn sub [query]
-  (let [rs (binding [*ratom-context* nil]
-             (mapv sub* query))
-        loc (into [] (comp (map :loc) (filter some?)) rs)
-        rem (into [] (comp (map :rem) (filter some?)) rs)]
-    (sched-read! rem)
-    (reaction
-      (into
-        {}
-        (for [[a r] loc]
-          [a @r])))))
-
-#_(defn mut! [node]
-  (let [attr (q/attr node)
-        df (get @muts :default)
-        f (get @muts attr df)
-        {:keys [loc rem]} (f (peek db) node)]
     (sched-mut! rem)
     (reset! db loc)
     nil))
