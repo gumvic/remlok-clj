@@ -9,35 +9,41 @@
   (fn [db]
     {:loc
      (reaction
-       (get @db :ads))}))
+       (vals
+         (get @db :ads)))}))
 
 (l/mut
-  :ads/new
+  :ad/new
   (fn [db [_ text]]
     (let [id (gensym "ad")
           ad {:id id :text text}]
       {:loc (assoc-in db [:ads id] ad)})))
 
-(l/mut
-  :cur-text
-  (fn [db [_ text]]
-    {:loc (assoc db :cur-text text)}))
-
 (defn ads []
+  (println 123)
   (let [ads (l/sub [:ads])]
     (fn []
-      [:ul
-       (for [{:keys [id text]} @ads]
-         ^{:id id}
-         [:li (str text)])])))
+      (println @ads)
+      (if (seq @ads)
+        [:ul
+         (for [{:keys [id text]} @ads]
+           ^{:id id}
+           [:li "[" (str id) "]" " " (str text)])]
+        [:span "No Ads Yet"]))))
 
-(defn input []
-  (let [input (l/sub [:input])]
+(defn new-ad []
+  (let [cur-ad (l/sub [:cur-ad])]
     (fn []
-      [:input
-       {:on-change #(l/mut! [:input (-> % .-target .-value)])}
-       @input])))
+      [:div
+       [:input
+        {:on-change #(l/mut! [:cur-ad (-> % .-target .-value)])
+         :value @cur-ad}]
+       [:button
+        {:on-click #(do
+                     (l/mut! [:cur-ad ""])
+                     (l/mut! [:ad/new @cur-ad]))}
+        "post!"]])))
 
 (defn root []
   [ads]
-  [input])
+  [new-ad])
