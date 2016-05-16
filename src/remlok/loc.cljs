@@ -1,8 +1,22 @@
 (ns remlok.loc
+  (:refer-clojure :exclude [merge])
   (:require
     [reagent.core :as r]
-    [reagent.ratom :refer [*ratom-context*]]
+    [reagent.ratom
+     :refer-macros [reaction]
+     :refer [*ratom-context*]]
     [remlok.query :as q]))
+
+;;;;;;;;;;;;;
+;; Helpers ;;
+;;;;;;;;;;;;;
+
+(defn- select-fun [fs query]
+  (get fs (q/topic query) (get fs :default)))
+
+(defn- make-shield [f]
+  (binding [*ratom-context* nil]
+    (f)))
 
 ;;;;;;;;
 ;; DB ;;
@@ -15,30 +29,50 @@
 ;; Sync ;;
 ;;;;;;;;;;
 
+;; TODO add serialize/deserialize
 (def ^:private sync
   (atom {:scheduled? false
          :reads []
          :muts []
          :send #(%2 nil)
-         :merge ()}))
+         :merge {:default
+                 (fn [db query data]
+                   (let [topic (q/topic query)
+                         args (q/args query)]
+                     (assoc-in db [topic args] data)))}}))
 
 (defn send [f]
   (swap! sync assoc :send f))
 
-(defn nov! [nov]
-  (let [{:keys [reads muts]} nov]
-    ))
+(defn merge [topic f]
+  (swap! sync assoc-in [:merge topic] f))
+
+(defn merge! [nov]
+  (let [{:keys [reads muts]} nov
+        mfs (get @sync :merge)]
+    (swap!
+      db
+      #(reduce
+        (fn [db [query data]]
+          (let [f (select-fun mfs query)]
+            (f db query data)))
+        %1
+        %2)
+      (concat reads muts))))
 
 (defn- sync! []
   (let [{:keys [send reads muts]} @sync
-        sync* (merge
-               (when (seq reads) {:reads reads})
-               (when (seq muts) {:muts muts}))]
-    (when (seq sync*)
-      (send sync* nov!)
-      (swap! sync merge {:scheduled? false
-                         :reads []
-                         :muts []}))))
+        req (cljs.core/merge
+              (when (seq reads) {:reads reads})
+              (when (seq muts) {:muts muts}))]
+    (when (seq req)
+      (send req merge!)
+      (swap!
+        sync
+        assoc
+        :scheduled? false
+        :reads []
+        :muts []))))
 
 (defn- sched-sync! []
   (let [{:keys [scheduled?]} @sync]
@@ -60,13 +94,14 @@
 ;; Pub / Sub ;;
 ;;;;;;;;;;;;;;;
 
-(defn- make-shield [f]
-  (binding [*ratom-context* nil]
-    (f)))
-
+;; TODO should default pub try to synchronize if there's nothing in the db?
 (def ^:private pubs
   (atom
-    {:default (fn [])}))
+    {:default (fn [db query]
+                (let [topic (q/topic query)
+                      args (q/args query)]
+                  {:loc (reaction
+                          (get-in @db [topic args]))}))}))
 
 (def ^:private muts
   (atom
@@ -78,19 +113,14 @@
 (defn mut [topic f]
   (swap! muts assoc topic f))
 
-(defn- topic-f [fs topic]
-  (get fs topic (get fs :default)))
-
 (defn sub [query]
-  (let [topic (q/topic query)
-        f (topic-f @pubs topic)
+  (let [f (select-fun @pubs query)
         {:keys [loc rem]} (make-shield #(f db query))]
     (sched-read! rem)
     loc))
 
 (defn mut! [query]
-  (let [topic (q/topic query)
-        f (topic-f @muts topic)
+  (let [f (select-fun @muts query)
         {:keys [loc rem]} (make-shield #(f @db query))]
     (sched-mut! rem)
     (reset! db loc)
