@@ -15,19 +15,19 @@
     (.send gjsonp nil #(put! ch (second %)))
     ch))
 
-(r/pub
+#_(r/pub
   :sugg
   (fn [node]
     (let [s (q/args node)]
       (wiki s))))
 
-(l/pub
+#_(l/pub
   :search
   (fn [db]
     {:loc (reaction
             (get @db :search))}))
 
-(l/pub
+#_(l/pub
   :sugg
   (fn [db node]
     (let [s (q/args node)]
@@ -43,11 +43,11 @@
 
 (l/mut
   :search
-  (fn [db node]
-    (let [s (q/args node)]
+  (fn [db query]
+    (let [s (q/args query)]
       {:loc (assoc db :search s)})))
 
-(l/sync
+#_(l/sync
   (fn [{:keys [reads]} res]
     (let [reads* (a/map
                    (fn [& qr]
@@ -65,12 +65,11 @@
       (take! reads* #(res {:reads %})))))
 
 (defn input []
-  (let [props (l/sub [:search])]
+  (let [search (l/sub [:search])]
     (fn []
-      (let [{:keys [search]} @props]
-        [:input
-         {:on-change #(l/mut! `(:search ~(-> % .-target .-value)))
-          :value (str search)}]))))
+      [:input
+       {:on-change #(l/mut! `[:search ~(-> % .-target .-value)])
+        :value (str @search)}])))
 
 (defn list []
   (let [search (l/sub [:search])

@@ -103,9 +103,13 @@
                   {:loc (reaction
                           (get-in @db [topic args]))}))}))
 
+;; TODO should default mut try to synchronize?
 (def ^:private muts
   (atom
-    {:default (fn [db] {:loc db})}))
+    {:default (fn [db query]
+                (let [topic (q/topic query)
+                      args (q/args query)]
+                  {:loc (assoc db topic args)}))}))
 
 (defn pub [topic f]
   (swap! pubs assoc topic f))
