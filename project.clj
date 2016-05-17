@@ -1,21 +1,9 @@
-(defproject remlok "0.1.0-SNAPSHOT"
-  :description "FIXME: write description"
-  :url "http://example.com/FIXME"
+(defproject gumvic/remlok "0.1.0"
+  :description "Miniature Clojure(Script) UI framework with optimistic updates and all that"
+  :url "https://github.com/gumvic/remlok"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/clojurescript "1.7.228"]
-                 [org.clojure/core.async "0.2.374"]
-                 [com.cognitect/transit-clj "0.8.285"]
                  [reagent "0.5.1"]]
-  :plugins [[lein-cljsbuild "1.1.2"]]
-  :cljsbuild
-  {:builds
-   {:dev
-    {:source-paths ["src"]
-     :compiler {:main remlok.playground
-                :output-dir "target"
-                :output-to "target/main.js"
-                :optimizations :none
-                :source-map true
-                :pretty-print true}}}})
+  :source-paths ["src"])
