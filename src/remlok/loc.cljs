@@ -84,14 +84,12 @@
       (js/setTimeout sync! 0))))
 
 (defn- sched-read! [query]
-  (when query
-    (swap! sync update :reads conj query)
-    (sched-sync!)))
+  (swap! sync update :reads conj query)
+  (sched-sync!))
 
 (defn- sched-mut! [query]
-  (when query
-    (swap! sync update :muts conj query)
-    (sched-sync!)))
+  (swap! sync update :muts conj query)
+  (sched-sync!))
 
 ;;;;;;;;;;;;;;;
 ;; Pub / Sub ;;
@@ -126,13 +124,22 @@
 
 (defn sub [query]
   (let [f (select-fun @pubs query)
-        {:keys [loc rem]} (make-shield #(f db query))]
-    (sched-read! rem)
-    loc))
+        locrem (make-shield #(f db query))
+        loc (get locrem :loc ::none)
+        rem (get locrem :rem ::none)]
+    (when (not= rem ::none)
+      (sched-read! rem))
+    (if (not= loc ::none)
+      loc
+      (r/atom nil))))
 
 (defn mut! [query]
   (let [f (select-fun @muts query)
-        {:keys [loc rem]} (make-shield #(f @db query))]
-    (sched-mut! rem)
-    (reset! db loc)
+        locrem (make-shield #(f @db query))
+        loc (get locrem :loc ::none)
+        rem (get locrem :rem ::none)]
+    (when (not= loc ::none)
+      (reset! db loc))
+    (when (not= rem ::none)
+      (sched-mut! rem))
     nil))
