@@ -2,14 +2,25 @@
   (:require
     [remlok.loc :as l]
     [remlok.rem :as r]
-    [reagent.ratom :refer-macros [reaction]]))
+    [reagent.ratom :refer-macros [reaction]]
+    [clojure.string :refer [capitalize]]))
 
 ;;;;;;;;;;;;
 ;; Remote ;;
 ;;;;;;;;;;;;
 
-(def db
-  (atom {}))
+(let [id-a (random-uuid)
+      id-b (random-uuid)
+      ad-a {:id id-a
+            :text "Clojure job"
+            :created (.getTime (js/Date.))}
+      ad-b {:id id-b
+            :text "Java job"
+            :created (inc (.getTime (js/Date.)))}]
+  (def db
+    (atom
+      {id-a ad-a
+       id-b ad-b})))
 
 (r/pub
   :ads
@@ -18,8 +29,29 @@
 
 (r/mut
   :ad/new
-  (fn [[tmp-id text]]
-    ))
+  (fn [[_ {:keys [text] :as ad}]]
+    (let [text (capitalize text)
+          existing (first
+                     (filter
+                       (fn [[_ {text* :text}]]
+                         (= text* text))
+                       @db))]
+      (when-not existing
+        (let [id (random-uuid)
+              ad* (assoc ad
+                    :id id
+                    :text text)]
+          (swap! db assoc id ad*)
+          ad*)))))
+
+(defn receive [{:keys [reads muts]} res]
+  (let [reads* (for [q reads]
+                 [q (r/read q)])
+        muts* (for [q muts]
+                [q (r/mut! q)])
+        res* {:reads reads*
+              :muts muts*}]
+    (res res*)))
 
 ;;;;;;;;;;;
 ;; Local ;;
@@ -29,16 +61,35 @@
   :ads
   (fn [db]
     {:loc
-     (reaction
-       (vals
-         (get @db :ads)))}))
+          (reaction
+            (sort-by
+              :created
+              (vals (get @db :ads))))
+     :rem [:ads]}))
 
 (l/mut
   :ad/new
   (fn [db [_ text]]
     (let [id (gensym "tmp")
-          ad {:id id :text text}]
-      {:loc (assoc-in db [:ads id] ad)})))
+          ad {:id id
+              :text text
+              :created (.getTime (js/Date.))}]
+      {:loc (update db :ads assoc id ad)
+       :rem [:ad/new ad]})))
+
+(l/send
+  (fn [req res]
+    (js/setTimeout
+      #(receive req res)
+      1000)))
+
+(l/merge
+  :ad/new
+  (fn [db [_ {tmp-id :id}] {:keys [id] :as ad}]
+    (let [db* (update db :ads dissoc tmp-id)]
+      (if ad
+        (update db* :ads assoc id ad)
+        db*))))
 
 (defn ads []
   (let [ads (l/sub [:ads])]
