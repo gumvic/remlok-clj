@@ -106,7 +106,7 @@
         db*))))
 
 (defn ads []
-  (let [ads (l/sub [:ads])]
+  (let [ads (l/read [:ads])]
     (fn []
       (if (seq @ads)
         [:ul
@@ -116,7 +116,7 @@
         [:span "No Ads Yet"]))))
 
 (defn new-ad []
-  (let [cur-ad (l/sub [:cur-ad])]
+  (let [cur-ad (l/read [:cur-ad])]
     (fn []
       [:div
        [:input
