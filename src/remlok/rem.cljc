@@ -12,9 +12,17 @@
 ;; Pub / Sub ;;
 ;;;;;;;;;;;;;;;
 
-(defn pubf [])
+;; TODO emit cross-platform warning
+(defn pubf
+  "Default publication function.
+  Doesn't do anything."
+  [])
 
-(defn mutf [])
+;; TODO emit cross-platform warning
+(defn mutf
+  "Default mutation function.
+  Doesn't do anything."
+  [])
 
 (def ^:private pubs
   (atom

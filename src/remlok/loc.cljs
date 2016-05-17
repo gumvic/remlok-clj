@@ -28,12 +28,17 @@
 ;; Sync ;;
 ;;;;;;;;;;
 
-(defn mergef [db [topic args] data]
+(defn mergef
+  "Default merge function."
+  [db [topic args] data]
   (if (some? args)
     (assoc-in db [topic args] data)
     (assoc db topic data)))
 
-(defn sendf [req]
+(defn sendf
+  "Default send function.
+  Doesn't do anything, will emit a warning when used."
+  [req]
   (.warn js/console "This send is omitted (see remlok.loc/send): " (str req)))
 
 ;; TODO consider adding serialize/deserialize
@@ -96,7 +101,9 @@
 ;;;;;;;;;;;;;;;
 
 ;; TODO should this try to synchronize if there's nothing in the db?
-(defn pubf [db [topic args]]
+(defn pubf
+  "Default publication function."
+  [db [topic args]]
   {:loc
    (if (some? args)
      (reaction
@@ -105,7 +112,9 @@
        (get @db topic)))})
 
 ;; TODO should this try to synchronize and how?
-(defn mutf [db [topic args]]
+(defn mutf
+  "Default mutation function."
+  [db [topic args]]
   {:loc (assoc db topic args)})
 
 (def ^:private pubs
