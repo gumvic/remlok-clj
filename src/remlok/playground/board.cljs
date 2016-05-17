@@ -97,7 +97,7 @@
       (if (seq @ads)
         [:ul
          (for [{:keys [id text]} @ads]
-           ^{:id id}
+           ^{:key (str id)}
            [:li "[" (str id) "]" " " (str text)])]
         [:span "No Ads Yet"]))))
 

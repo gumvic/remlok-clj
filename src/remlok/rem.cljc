@@ -12,13 +12,17 @@
 ;; Pub / Sub ;;
 ;;;;;;;;;;;;;;;
 
+(defn pubf [])
+
+(defn mutf [])
+
 (def ^:private pubs
   (atom
-    {:default (fn [])}))
+    {:default pubf}))
 
 (def ^:private muts
   (atom
-    {:default (fn [])}))
+    {:default mutf}))
 
 (defn pub [attr f]
   (swap! pubs assoc attr f))

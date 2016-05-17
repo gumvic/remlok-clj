@@ -28,17 +28,20 @@
 ;; Sync ;;
 ;;;;;;;;;;
 
+(defn mergef [db [topic args] data]
+  (if (some? args)
+    (assoc-in db [topic args] data)
+    (assoc db topic data)))
+
+(defn sendf [])
+
 ;; TODO add serialize/deserialize
 (def ^:private sync
   (atom {:scheduled? false
          :reads []
          :muts []
-         :send #(%2 nil)
-         :merge {:default
-                 (fn [db [topic args] data]
-                   (if (some? args)
-                     (assoc-in db [topic args] data)
-                     (assoc db topic data)))}}))
+         :send sendf
+         :merge {:default mergef}}))
 
 (defn send [f]
   (swap! sync assoc :send f))
@@ -93,21 +96,26 @@
 ;; Pub / Sub ;;
 ;;;;;;;;;;;;;;;
 
-;; TODO should default pub try to synchronize if there's nothing in the db?
+;; TODO should this try to synchronize if there's nothing in the db?
+(defn pubf [db [topic args]]
+  {:loc
+   (if (some? args)
+     (reaction
+       (get-in @db [topic args]))
+     (reaction
+       (get @db topic)))})
+
+;; TODO should this try to synchronize and how?
+(defn mutf [db [topic args]]
+  {:loc (assoc db topic args)})
+
 (def ^:private pubs
   (atom
-    {:default (fn [db [topic args]]
-                {:loc (if (some? args)
-                        (reaction
-                          (get-in @db [topic args]))
-                        (reaction
-                          (get @db topic)))})}))
+    {:default pubf}))
 
-;; TODO should default mut try to synchronize?
 (def ^:private muts
   (atom
-    {:default (fn [db [topic args]]
-                {:loc (assoc db topic args)})}))
+    {:default mutf}))
 
 (defn pub [topic f]
   (swap! pubs assoc topic f))
