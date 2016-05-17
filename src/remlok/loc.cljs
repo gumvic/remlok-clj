@@ -1,5 +1,5 @@
 (ns remlok.loc
-  (:refer-clojure :exclude [merge])
+  (:refer-clojure :exclude [read merge])
   (:require
     [reagent.core :as r]
     [reagent.ratom
@@ -122,14 +122,18 @@
 (defn mut [topic f]
   (swap! muts assoc topic f))
 
-(defn sub [query]
+(defn read [query]
   (let [f (select-fun @pubs query)
         locrem (make-shield #(f db query))
         loc (get locrem :loc ::none)
         rem (get locrem :rem ::none)]
-    (when (not= rem ::none)
+    (when (and
+            (not= rem ::none)
+            (some? rem))
       (sched-read! rem))
-    (if (not= loc ::none)
+    (if (and
+          (not= loc ::none)
+          (some? loc))
       loc
       (r/atom nil))))
 
@@ -140,6 +144,8 @@
         rem (get locrem :rem ::none)]
     (when (not= loc ::none)
       (reset! db loc))
-    (when (not= rem ::none)
+    (when (and
+            (not= rem ::none)
+            (some? rem))
       (sched-mut! rem))
     nil))

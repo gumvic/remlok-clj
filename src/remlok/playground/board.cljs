@@ -8,15 +8,15 @@
 ;;;;;;;;;;;
 ;; Board ;;
 ;;;;;;;;;;;
-;; This features:
+;; Features:
 ;; 1) Remote reads and mutations (artificial delay of 1000 is set to emulate network).
 ;; 2) Optimistic mutations.
 ;; 3) Both client and server mutation verification for different cases.
-;; 4) Patching of temporary ids.
+;; 4) Merging novelty on the local, with temporary ids patching.
 ;; You can add ads to the board, so that:
-;; 1) Ad can not be empty (this is verified by the local).
-;; 2) Ad can not be a duplicate (this is verified by the remote).
-;; 3) Ad should be properly capitalized (this is verified by the remote).
+;; 1) Ad can not be empty (this is verified on the local).
+;; 2) Ad can not be a duplicate (this is verified on the remote).
+;; 3) Ad should be properly capitalized (this is verified on the remote).
 
 ;;;;;;;;;;;;
 ;; Remote ;;
@@ -83,14 +83,13 @@
 (l/mut
   :ad/new
   (fn [db [_ text]]
-    (if-not (empty? text)
+    (when-not (empty? text)
       (let [id (gensym "tmp")
             ad {:id id
                 :text text
                 :created (.getTime (js/Date.))}]
         {:loc (update db :ads assoc id ad)
-         :rem [:ad/new ad]})
-      {:loc db})))
+         :rem [:ad/new ad]}))))
 
 (l/send
   (fn [req res]

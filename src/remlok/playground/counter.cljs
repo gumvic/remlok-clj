@@ -1,6 +1,6 @@
 (ns remlok.playground.counter
   (:require
-    [remlok.loc :refer [pub sub mut mut!]]))
+    [remlok.loc :refer [pub read mut mut!]]))
 
 ;;;;;;;;;;;;;
 ;; Counter ;;
@@ -12,7 +12,7 @@
 (mut :inc (fn [db] {:loc (inc db)}))
 
 (defn root []
-  (let [counter (sub [:counter])]
+  (let [counter (read [:counter])]
     (fn []
       [:div
        [:button {:on-click #(mut! [:dec])} "-"]

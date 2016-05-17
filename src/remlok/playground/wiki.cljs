@@ -80,16 +80,16 @@
     (receive req res)))
 
 (defn input []
-  (let [search (l/sub [:search])]
+  (let [search (l/read [:search])]
     (fn []
       [:input
        {:on-change #(l/mut! [:search (-> % .-target .-value)])
         :value (str @search)}])))
 
 (defn list []
-  (let [search (l/sub [:search])
+  (let [search (l/read [:search])
         sugg (reaction
-               @(l/sub [:sugg @search]))]
+               @(l/read [:sugg @search]))]
     (fn []
       [:ul
        (for [s @sugg]
