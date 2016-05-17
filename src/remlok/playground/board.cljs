@@ -92,7 +92,7 @@
          :rem [:ad/new ad]})
       {:loc db})))
 
-#_(l/send
+(l/send
   (fn [req res]
     (js/setTimeout
       #(receive req res)

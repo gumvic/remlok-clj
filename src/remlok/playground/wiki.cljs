@@ -7,6 +7,15 @@
     [remlok.rem :as r]
     [cljs.core.async :as a :refer [chan put! take!]]))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Wiki Auto Completion ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Inspired by the om.next example of the same functionality.
+;; Features:
+;; 1) Remote reads.
+;; 2) Asynchronous processing on the remote using core.async.
+;; 3) Caching on the local, so that unnecessary remote reads are not made.
+
 ;;;;;;;;;;;;
 ;; Remote ;;
 ;;;;;;;;;;;;

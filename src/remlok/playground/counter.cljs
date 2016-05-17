@@ -2,6 +2,11 @@
   (:require
     [remlok.loc :refer [pub sub mut mut!]]))
 
+;;;;;;;;;;;;;
+;; Counter ;;
+;;;;;;;;;;;;;
+;; Features local subscriptions and mutations.
+
 (pub :counter (fn [db] {:loc db}))
 (mut :dec (fn [db] {:loc (dec db)}))
 (mut :inc (fn [db] {:loc (inc db)}))
