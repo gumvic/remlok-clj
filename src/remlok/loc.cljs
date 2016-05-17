@@ -124,28 +124,18 @@
 
 (defn read [query]
   (let [f (select-fun @pubs query)
-        locrem (make-shield #(f db query))
-        loc (get locrem :loc ::none)
-        rem (get locrem :rem ::none)]
-    (when (and
-            (not= rem ::none)
-            (some? rem))
+        {:keys [loc rem]} (make-shield #(f db query))]
+    (when (some? rem)
       (sched-read! rem))
-    (if (and
-          (not= loc ::none)
-          (some? loc))
+    (if (some? loc)
       loc
       (r/atom nil))))
 
 (defn mut! [query]
   (let [f (select-fun @muts query)
-        locrem (make-shield #(f @db query))
-        loc (get locrem :loc ::none)
-        rem (get locrem :rem ::none)]
-    (when (not= loc ::none)
+        {:keys [loc rem]} (make-shield #(f @db query))]
+    (when (some? loc)
       (reset! db loc))
-    (when (and
-            (not= rem ::none)
-            (some? rem))
+    (when (some? rem)
       (sched-mut! rem))
     nil))
