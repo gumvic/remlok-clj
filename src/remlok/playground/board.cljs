@@ -5,6 +5,19 @@
     [reagent.ratom :refer-macros [reaction]]
     [clojure.string :refer [capitalize]]))
 
+;;;;;;;;;;;
+;; Board ;;
+;;;;;;;;;;;
+;; This features:
+;; 1) Remote reads and mutations (artificial delay of 1000 is set to emulate network).
+;; 2) Optimistic mutations.
+;; 3) Both client and server mutation verification for different cases.
+;; 4) Patching of temporary ids.
+;; You can add ads to the board, so that:
+;; 1) Ad can not be empty (this is verified by the local).
+;; 2) Ad can not be a duplicate (this is verified by the remote).
+;; 3) Ad should be properly capitalized (this is verified by the remote).
+
 ;;;;;;;;;;;;
 ;; Remote ;;
 ;;;;;;;;;;;;
@@ -24,12 +37,12 @@
 
 (r/pub
   :ads
-  (fn []
+  (fn [db _]
     @db))
 
 (r/mut
   :ad/new
-  (fn [[_ {:keys [text] :as ad}]]
+  (fn [db [_ {:keys [text] :as ad}]]
     (let [text (capitalize text)
           existing (first
                      (filter
@@ -46,9 +59,9 @@
 
 (defn receive [{:keys [reads muts]} res]
   (let [reads* (for [q reads]
-                 [q (r/read q)])
+                 [q (r/read db q)])
         muts* (for [q muts]
-                [q (r/mut! q)])
+                [q (r/mut! db q)])
         res* {:reads reads*
               :muts muts*}]
     (res res*)))
@@ -70,14 +83,16 @@
 (l/mut
   :ad/new
   (fn [db [_ text]]
-    (let [id (gensym "tmp")
-          ad {:id id
-              :text text
-              :created (.getTime (js/Date.))}]
-      {:loc (update db :ads assoc id ad)
-       :rem [:ad/new ad]})))
+    (if-not (empty? text)
+      (let [id (gensym "tmp")
+            ad {:id id
+                :text text
+                :created (.getTime (js/Date.))}]
+        {:loc (update db :ads assoc id ad)
+         :rem [:ad/new ad]})
+      {:loc db})))
 
-(l/send
+#_(l/send
   (fn [req res]
     (js/setTimeout
       #(receive req res)

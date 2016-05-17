@@ -27,13 +27,13 @@
 (defn pub [attr f]
   (swap! pubs assoc attr f))
 
-(defn read [query]
+(defn read [ctx query]
   (let [f (select-fun @pubs query)]
-    (f query)))
+    (f ctx query)))
 
 (defn mut [attr f]
   (swap! muts assoc attr f))
 
-(defn mut! [query]
+(defn mut! [ctx query]
   (let [f (select-fun @muts query)]
-    (f query)))
+    (f ctx query)))

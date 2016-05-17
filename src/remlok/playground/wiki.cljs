@@ -20,14 +20,14 @@
 
 (r/pub
   :sugg
-  (fn [[_ search]]
+  (fn [_ [_ search]]
     (wiki search)))
 
 (defn receive [{:keys [reads]} res]
   (let [reads* (a/map
                  vector
                  (for [q reads
-                       :let [ch (r/read q)]]
+                       :let [ch (r/read nil q)]]
                    (let [ch* (chan)]
                      (take! ch #(put! ch* [q %]))
                      ch*)))]

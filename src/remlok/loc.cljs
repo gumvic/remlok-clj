@@ -33,9 +33,10 @@
     (assoc-in db [topic args] data)
     (assoc db topic data)))
 
-(defn sendf [])
+(defn sendf [req]
+  (.warn js/console "This send is omitted (see remlok.loc/send): " (str req)))
 
-;; TODO add serialize/deserialize
+;; TODO consider adding serialize/deserialize
 (def ^:private sync
   (atom {:scheduled? false
          :reads []
