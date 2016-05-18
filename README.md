@@ -105,6 +105,14 @@ Note that remlok will be smart enough to batch the queries.
 
 You set up your merge function with **merge**, for the topic that you want to merge in some specific way.
 
+Your merge handler will receive three arguments, **db**, **query** and **data**.
+
+**db** - the current application state.
+
+**query** - the query, the result of which you're merging.
+
+**data** - the result itself.
+
 When there is a novelty to be merged, it will be handled by the merge function.
 
 The novelty will have the format 
@@ -131,14 +139,6 @@ you may receive
 ```
 
 By setting up merge handlers for the topics, you can control how all those things are getting integrated into your application state.
-
-Your merge handler will receive three arguments, **db**, **query** and **data**.
-
-**db** - the current application state.
-
-**query** - the query the result of which you're merging.
-
-**data** - the result of that query.
 
 For example, you may want to patch your temporary ids like this (super naive but demonstrates the point):
 
