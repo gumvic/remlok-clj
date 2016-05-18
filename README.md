@@ -134,8 +134,8 @@ you may receive
 
 ```clojure
 [[[:user 1] {:id 1 :name "Bob"}]
- [:user 2] {:id 2 :name "Shmob"}
- [:user/new {:id "tmp_id_1" :name "Alice"}] {:id 3}]
+ [[:user 2] {:id 2 :name "Shmob"}]
+ [[:user/new {:id "tmp_id_1" :name "Alice"}] {:id 3}]]
 ```
 
 By setting up merge handlers for the topics, you can control how all those things are getting integrated into your application state.
