@@ -132,7 +132,7 @@ you may receive
 
 By setting up merge handlers for the topics, you can control how all those things are getting integrated into your application state.
 
-Your merge handler will receive three arguments, **db**, **query**, **data**.
+Your merge handler will receive three arguments, **db**, **query** and **data**.
 
 **db** - the current application state.
 
