@@ -168,7 +168,7 @@ By setting up merge handlers for the topics, you can control how all those thing
 For example, you may want to patch your temporary ids like this (super naive but demonstrates the point):
 
 ```clojure
-(merge!
+(merge
   :user/new
   (fn [db [_ {tmp-id :id}] {id :id}]
     (let [user (get-in db [:users tmp-id])]
