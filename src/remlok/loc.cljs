@@ -73,8 +73,7 @@
   The response has a format [[query0 data0], [query1 data1], ...].
   Note that the response shouldn't necessarily come from the remote, this function can be called at any time with any arbitrary 'novelty', as long as it obeys the format."
   [res]
-  (let [{:keys [reads muts]} res
-        mfs (get @sync :merge)]
+  (let [mfs (get @sync :merge)]
     (swap!
       db
       #(reduce
@@ -83,7 +82,7 @@
             (f db query data)))
         %1
         %2)
-      (concat reads muts))))
+      res)))
 
 (defn- sync! []
   (let [{:keys [send reads muts]} @sync
