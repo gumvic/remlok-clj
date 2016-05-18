@@ -13,7 +13,7 @@ If haven't already, you really want to read [re-frame tutorial](https://github.c
 If you have used re-frame, you will get a grasp of this one in no time.
 
 Also, note that remlok is a no-magic framework. 
-It keeps things simple and predictable, but this also means that you shouldn't be afraid to get your hands dirty, since it doesn't do much by default.
+It keeps things simple and not surprising, but this also means that you shouldn't be afraid to get your hands dirty, since it doesn't do much by default.
 
 ## Usage
 
@@ -25,7 +25,7 @@ This is what happens in remlok:
 
 1.2) If you want to talk to your remote, you **send** a function which will do that.
  
-1.3) If you want to control how the response from the remote gets merged in the state, you **merge** a function which will do that.
+1.3) If you want to control how the response from the remote gets merged into the application state, you **merge** a function which will do that.
 
 2) Your reagent components **read** queries.
 
@@ -44,7 +44,7 @@ This is what happens in remlok:
 4.1) remlok uses the corresponding handler, or falls back to the default.
 
 As you can see, remlok allows you to have your say on every step of the application lifecycle.
-It also tries to be as predictable and reasonable with its default actions.
+It also tries to be as predictable and reasonable as possible with its default actions.
 
 ## Query
 
@@ -58,7 +58,15 @@ When you **merge**, you also set up the handler for the topic.
 
 You set up your read functions with **pub**.
 
-The read function must return 
+remlok will use the query's topic to decide on the read function. 
+
+Read function will receive two arguments, **db** and **query**.
+
+**db** - the application state ratom.
+
+**query** - the query to read.
+
+Read function must return 
 
 ```clojure
 {:loc reaction 
@@ -69,9 +77,17 @@ Both **:loc** and **:rem** are optional.
 
 ## Mutation
 
-You set up your read functions with **mut**.
+You set up your mutation functions with **mut**.
 
-The mutation function must return 
+remlok will use the query's topic to decide on the mutation function. 
+
+Mutation function will receive two arguments, **db** and **query**.
+
+**db** - the application state.
+
+**query** - the query to read.
+
+Mutation function must return 
 
 ```clojure
 {:loc db* 
@@ -84,11 +100,11 @@ Both **:loc** and **:rem** are optional.
 
 You set up your send function with **send**.
 
-This function will get **req** and **res** arguments.
+Send function will receive **req** and **res** arguments.
 
-**req** is the request.
+**req** - the request.
 
-**res** is a callback which your send function will have to call with the response, once it's available from the remote.
+**res** - the callback to call with the response, once it's available from the remote.
 
 The request has the format
 
@@ -97,25 +113,34 @@ The request has the format
  :muts [query0 query1 ...]}
 ```
 
-Both **:reads** and **:muts** are optional.
+The response should have the format
+
+```clojure
+[[query0 data0] [query1 data1] ...]
+```
 
 Note that remlok will be smart enough to batch the queries.
 
 ## Merge
 
-You set up your merge function with **merge**, for the topic that you want to merge in some specific way.
+You set up your merge function with **merge**.
 
-Your merge handler will receive three arguments, **db**, **query** and **data**.
+remlok will use the query's topic to decide on the merge function.
 
-**db** - the current application state.
+Merge function will receive three arguments, **db**, **query** and **data**.
+
+**db** - the application state.
 
 **query** - the query, the result of which you're merging.
 
 **data** - the result itself.
 
-When there is a novelty to be merged, it will be handled by the merge function.
+How does merging work?
 
-The novelty will have the format 
+The function which merges a novelty is called **merge!**.
+remlok will call it for you, when your send function calls its **res** callback.
+
+As we already know, the novelty should have the format 
 
 ```clojure
 [[query0 data0] [query1 data1] ...]
@@ -155,6 +180,16 @@ For example, you may want to patch your temporary ids like this (super naive but
 Note that you can call **merge!** by yourself at any time with any properly formatted novelty.
 This will be usable if you want to handle push updates from the remote (i. e. when there's no send before the merge).
 
+## Fallbacks
+
+remlok provides fallbacks for everything, so it can function on its own.
+(Obviously, the send fallback doesn't actually do anything except emitting a warning that it doesn't do anything.)
+
+Fallbacks have **f** at the end - **pubf**, **mutf**, **sendf** and **mergef** and are public.
+Their docstrings explain what they do (they don't do a whole lot).
+
+TODO - :remlok/default topic
+
 ## Remote
 
 Remote is much more simple.
@@ -191,7 +226,7 @@ So, much like in re-frame, you can not nest queries, but I strongly believe that
 
 (Also, you can emulate recursive queries **to some extent**, having all that "friend of friend of friend" madness in your **args**.)
 
-### Why request has **:reads** and **:muts**, but response (and novelty in general) do not?
+### Why request has **:reads** and **:muts**, but response (and novelty in general) does not?
 
 The request sent to your remote has **:reads** and **:muts** to let your remote know how to process each query.
 
@@ -202,6 +237,12 @@ On the other hand, the response is just a vector of pairs **[query data]**.
 That's because, from the client's point of view, all that comes from the remote is reads.
 For example, if the client sends a mutation **[:user/new "Alice"]**, the response **[[:user/new "Alice"] {:id 1}]** is not a "mutation", it's a read of the result of that mutation.
 Basically, the client sends reads and mutations, and says, "I want the response to be the **reads** of the results of all those operations I sent".
+
+### Why global state?
+
+Just like re-frame, remlok uses global state, so you can have only one application per client context (and only one application per server context, for that matter).
+
+Of course, this solution isn't quite optimal, so any feedback is welcome!
 
 ## License
 
