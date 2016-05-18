@@ -40,13 +40,11 @@ This is what happens in remlok:
 
 4.1) remlok uses the corresponding handler, or falls back to the default.
 
-Please refer to those functions' docstrings, they are slightly more specific.
-
 ## Query
 
-A query is just [topic args].
+A query is just **[topic args]**, both for reads and mutations.
 
-When you **pub**/**mut**, you set up the handler for the topic.
+When you **pub/mut**, you set up the handler for the topic.
 
 When you **merge**, you also set up the handler for the topic.
 
@@ -88,12 +86,55 @@ Note that remlok will be smart enough to batch the queries.
 
 ## Merge
 
-You set up your send function with **merge**.
+You set up your merge function with **merge**, for the topic that you want to merge in some specific way.
 
-When 
+When there is a novelty to be merged, it will be handled by the merge function.
+
+The novelty will have the format 
+
+```clojure
+[[query0 data0] [query1 data1] ...]
+```
+
+As you can see, those are just **[query data]** pairs, where the **data** is the result of the corresponding **query**.
+
+For example, if you have a send
+
+```clojure
+{:reads [[:user 1] [:user 2]]
+ :muts [[:user/new {:id "tmp_id_1" :name "Alice"}]]}
+```
+
+you may receive
+
+```clojure
+[[[:user 1] {:id 1 :name "Bob"}]
+ [:user 2] {:id 2 :name "Shmob"}
+ [:user/new {:id "tmp_id_1" :name "Alice"}] {:id 3}]
+```
+
+By setting up merge handlers for the topics, you can control how all those things are getting integrated into your application state.
+
+For example, you may want to patch your temporary ids like this (super naive but demonstrates the point):
+
+```clojure
+(merge!
+  :user/new
+  (fn [db [_ {tmp-id :id}] {id :id}]
+    (let [user (get-in db [:users tmp-id])]
+      (-> db
+        (update :users dissoc tmp-id)
+        (assoc-in [:users id] user)))))
+```
 
 Note that you can call **merge!** by yourself at any time with any properly formatted novelty.
-This will be usable if you want push updates from the remote (i. e. when there's no send before the merge).
+This will be usable if you want to handle push updates from the remote (i. e. when there's no send before the merge).
+
+## Remote - TODO
+
+Remote is much more simple.
+
+It exposes 
 
 ## Examples
 
