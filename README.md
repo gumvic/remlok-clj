@@ -12,6 +12,9 @@ If haven't already, you really want to read [re-frame tutorial](https://github.c
 
 If you have used re-frame, you will get a grasp of this one in no time.
 
+Finally, remlok is a no-magic framework. 
+It keeps things simple and predictable, but this also means that you shouldn't be afraid to get your hands dirty, since it doesn't do much by default.
+
 ## Usage
 
 This is what happens in remlok:
@@ -39,6 +42,9 @@ This is what happens in remlok:
 4) The response from the remote comes back to be merged.
 
 4.1) remlok uses the corresponding handler, or falls back to the default.
+
+As you can see, remlok allows you to have your say on every step of the application lifecycle.
+It also tries to be as predictable and reasonable with its default actions.
 
 ## Query
 
@@ -130,11 +136,15 @@ For example, you may want to patch your temporary ids like this (super naive but
 Note that you can call **merge!** by yourself at any time with any properly formatted novelty.
 This will be usable if you want to handle push updates from the remote (i. e. when there's no send before the merge).
 
-## Remote - TODO
+## Remote
 
 Remote is much more simple.
 
-It exposes 
+**remlok.rem** namespace exposes **pub**, **mut**, **read** and **mut!** functions.
+
+**read** and **mut!** allow you to pass the **ctx**, any clojure value, which will be passed to your handler functions.
+
+remlok has no further opinions on how you handle things on your server.
 
 ## Examples
 
