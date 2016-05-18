@@ -29,16 +29,19 @@
 ;;;;;;;;;;
 
 (defn mergef
-  "Default merge function."
-  [db [topic args] data]
-  (if (some? args)
-    (assoc-in db [topic args] data)
-    (assoc db topic data)))
+  "Default merge function.
+  If args is not nil, will (assoc-in db [topic args] data)
+  Otherwise, will (assoc db topic data)"
+  [db query data]
+  (let [[topic args] query]
+    (if (some? args)
+      (assoc-in db [topic args] data)
+      (assoc db topic data))))
 
 (defn sendf
   "Default send function.
   Doesn't do anything, will emit a warning when used."
-  [req]
+  [req _]
   (.warn js/console "This send is omitted (see remlok.loc/send): " (str req)))
 
 ;; TODO consider adding serialize/deserialize
@@ -49,14 +52,28 @@
          :send sendf
          :merge {:default mergef}}))
 
-(defn send [f]
+(defn send
+  "Sets the send function.
+  Send function is (req, res) -> none
+  req will have a format {:reads [query0 query1 ...], :muts [query0 query1 ...]}.
+  Both :reads and :muts are optional.
+  The responsibility of the function will be to pass the req to the remote, and call the res with the response."
+  [f]
   (swap! sync assoc :send f))
 
-(defn merge [topic f]
+(defn merge
+  "Sets the merge function for the topic.
+  Merge function is (db, query, data) -> db*
+  Note that the db will be already derefed."
+  [topic f]
   (swap! sync assoc-in [:merge topic] f))
 
-(defn merge! [nov]
-  (let [{:keys [reads muts]} nov
+(defn merge!
+  "Merges the response.
+  The response has a format [[query0 data0], [query1 data1], ...].
+  Note that the response shouldn't necessarily come from the remote, this function can be called at any time with any arbitrary 'novelty', as long as it obeys the format."
+  [res]
+  (let [{:keys [reads muts]} res
         mfs (get @sync :merge)]
     (swap!
       db
@@ -102,7 +119,9 @@
 
 ;; TODO should this try to synchronize if there's nothing in the db?
 (defn pubf
-  "Default publication function."
+  "Default publication function.
+  If args is not nil, will create a reaction of (get-in @db [topic args])
+  Otherwise, will create a reaction of (get @db topic)"
   [db [topic args]]
   {:loc
    (if (some? args)
@@ -113,7 +132,8 @@
 
 ;; TODO should this try to synchronize and how?
 (defn mutf
-  "Default mutation function."
+  "Default mutation function.
+  Will simply (assoc db topic args)"
   [db [topic args]]
   {:loc (assoc db topic args)})
 
@@ -125,13 +145,29 @@
   (atom
     {:default mutf}))
 
-(defn pub [topic f]
+(defn pub
+  "Publishes the topic using the supplied function.
+  The function must be (db, query) -> {:loc reaction, :rem query}
+  Both :loc and :rem are optional.
+  Note that the db will not be derefed, so that you can build a reaction."
+  [topic f]
   (swap! pubs assoc topic f))
 
-(defn mut [topic f]
+(defn mut
+  "Sets the mutation handler for the topic using the supplied function.
+  The function must be (db, query) -> {:loc db*, :rem query}
+  Both :loc and :rem are optional.
+  Note that the db will be already derefed."
+  [topic f]
   (swap! muts assoc topic f))
 
-(defn read [query]
+(defn read
+  "Reads the query using the function set by pub.
+  The query is a vector of two, [topic args].
+  Both topic and args are arbitrary clojure values.
+  Will fallback to the default (pubf) if no function is found for the topic.
+  Returns a reaction."
+  [query]
   (let [f (select-fun @pubs query)
         {:keys [loc rem]} (make-shield #(f db query))]
     (when (some? rem)
@@ -140,7 +176,13 @@
       loc
       (r/atom nil))))
 
-(defn mut! [query]
+(defn mut!
+  "Performs the mutation using the function set by mut.
+  The query is a vector of two, [topic args].
+  Both topic and args are arbitrary clojure values.
+  Will fallback to the default (mutf) if no function is found for the topic.
+  Always returns nil."
+  [query]
   (let [f (select-fun @muts query)
         {:keys [loc rem]} (make-shield #(f @db query))]
     (when (some? loc)
