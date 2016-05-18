@@ -1,4 +1,4 @@
-(defproject gumvic/remlok "0.1.0"
+(defproject gumvic/remlok "0.2.0"
   :description "Miniature Clojure(Script) UI framework with optimistic updates and all that."
   :url "https://github.com/gumvic/remlok"
   :license {:name "Eclipse Public License"

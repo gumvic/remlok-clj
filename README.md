@@ -1,14 +1,106 @@
 # remlok
 
-A Clojure library designed to ... well, that part is up to you.
+TODO - badge 0.2.0
+
+This is a very small and simple web framework.
+
+Think re-frame who can talk to the server out of the box.
+
+## Prerequisites
+
+If haven't already, you really want to read [re-frame tutorial](https://github.com/Day8/re-frame).
+
+If you have used re-frame, you will get a grasp of this one in no time.
 
 ## Usage
 
-FIXME
+This is what happens in remlok:
+
+1) Set up.
+
+1.1) You **pub** and **mut** functions to handle reads and mutations.
+
+1.2) If you want to talk to your remote, you **send** a function which will do that.
+ 
+1.3) If you want to control how the response from the remote gets merged in the state, you **merge** a function which will do that.
+
+2) Your reagent components **read** queries and render themselves.
+
+2.1) remlok uses the corresponding handler, or falls back to the default.
+
+2.2) The read handler returns {:loc, :rem}; :loc is given to the component, :rem goes to the remote. 
+
+3) Your user does something, and your components **mut!** that.
+
+3.1) remlok uses the corresponding handler, or falls back to the default.
+
+3.2) The mutation handler returns {:loc, :rem}; :loc is the new state, :rem goes to the remote.
+
+4) The response from the remote comes back to be merged.
+
+4.1) remlok uses the corresponding handler, or falls back to the default.
+
+Please refer to those functions' docstrings, they are slightly more specific.
+
+## Query
+
+A query is just [topic args].
+
+When you **pub**/**mut**, you set up the handler for the topic.
+
+When you **merge**, you also set up the handler for the topic.
+
+Note that it was a very deliberate decision to keep the queries flat.
+
+So, much like in re-frame, you can not nest queries.
+
+I strongly believe that not all applications even need recursive queries.
+
+## Read
+
+You set up your read functions with **pub**.
+
+The read function must return 
+
+```clojure
+{:loc reaction, :rem query}
+```
+
+Both **:loc** and **:rem** are optional.
+
+## Mutation
+
+You set up your read functions with **mut**.
+
+The mutation function must return 
+
+```clojure
+{:loc db*, :rem query}
+```
+
+Both **:loc** and **:rem** are optional.
+
+## Send
+
+You set up your send function with **send**.
+
+Note that remlok will be smart enough to batch the queries.
+
+## Merge
+
+You set up your send function with **merge**.
+
+When 
+
+Note that you can call **merge!** by yourself at any time with any properly formatted novelty.
+This will be usable if you want push updates from the remote (i. e. when there's no send before the merge).
+
+## Examples
+
+Check out the examples - TODO
+
+They feature optimistic updates and all that!
 
 ## License
 
-Copyright © 2016 FIXME
-
-Distributed under the Eclipse Public License either version 1.0 or (at
-your option) any later version.
+Distributed under the Eclipse Public License, the same as Clojure.
