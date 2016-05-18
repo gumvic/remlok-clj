@@ -4,7 +4,7 @@ TODO - badge 0.2.0
 
 This is a very small and simple web framework.
 
-Think re-frame who can talk to the server out of the box.
+Think re-frame talking to the server out of the box.
 
 ## Prerequisites
 
@@ -12,7 +12,7 @@ If haven't already, you really want to read [re-frame tutorial](https://github.c
 
 If you have used re-frame, you will get a grasp of this one in no time.
 
-Finally, remlok is a no-magic framework. 
+Also, note that remlok is a no-magic framework. 
 It keeps things simple and predictable, but this also means that you shouldn't be afraid to get your hands dirty, since it doesn't do much by default.
 
 ## Usage
@@ -55,10 +55,8 @@ When you **pub/mut**, you set up the handler for the topic.
 When you **merge**, you also set up the handler for the topic.
 
 Note that it was a very deliberate decision to keep the queries flat.
-
 So, much like in re-frame, you can not nest queries.
-
-I strongly believe that not all applications even need recursive queries.
+I strongly believe that not all applications actually need recursive/deeply nested queries.
 
 ## Read
 
