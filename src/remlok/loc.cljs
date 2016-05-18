@@ -57,8 +57,8 @@
 (defn send
   "Sets the send function.
   Send function is (req, res) -> none
-  req will have a format {:reads [query0 query1 ...], :muts [query0 query1 ...]}.
-  Both :reads and :muts are optional.
+  req is {:reads [query0 query1 ...], :muts [query0 query1 ...]}.
+  res should be [[query0 data0], [query1 data1], ...].
   The responsibility of the function will be to pass the req to the remote, and call the res with the response."
   [f]
   (swap! sync assoc :send f))
@@ -71,9 +71,9 @@
   (swap! sync assoc-in [:merge topic] f))
 
 (defn merge!
-  "Merges the response.
-  The response has a format [[query0 data0], [query1 data1], ...].
-  Note that the response shouldn't necessarily come from the remote, this function can be called at any time with any arbitrary 'novelty', as long as it obeys the format."
+  "Merges the novelty.
+  The novelty should be [[query0 data0], [query1 data1], ...].
+  Note that the response shouldn't necessarily come from the remote, this function can be called at any time with any arbitrary novelty."
   [res]
   (let [mfs (get @sync :merge)]
     (swap!
