@@ -1,8 +1,8 @@
 # remlok
 
-TODO - badge 0.2.0
+[![Clojars Project](https://img.shields.io/clojars/v/gumvic/remlok.svg)](https://clojars.org/gumvic/remlok)
 
-This is a very small and simple web framework.
+This is a very small and simple web framework, which still aims to tackle complicated problems.
 
 Think re-frame talking to the server out of the box.
 
@@ -27,17 +27,17 @@ This is what happens in remlok:
  
 1.3) If you want to control how the response from the remote gets merged in the state, you **merge** a function which will do that.
 
-2) Your reagent components **read** queries and render themselves.
+2) Your reagent components **read** queries.
 
 2.1) remlok uses the corresponding handler, or falls back to the default.
 
-2.2) The read handler returns {:loc, :rem}; :loc is given to the component, :rem goes to the remote. 
+2.2) The read handler returns **{:loc, :rem}**; **:loc** is given to the component, **:rem** goes to the remote. 
 
 3) Your user does something, and your components **mut!** that.
 
 3.1) remlok uses the corresponding handler, or falls back to the default.
 
-3.2) The mutation handler returns {:loc, :rem}; :loc is the new state, :rem goes to the remote.
+3.2) The mutation handler returns **{:loc, :rem}**; **:loc** is the new state, **:rem** goes to the remote.
 
 4) The response from the remote comes back to be merged.
 
@@ -54,10 +54,6 @@ When you **pub/mut**, you set up the handler for the topic.
 
 When you **merge**, you also set up the handler for the topic.
 
-Note that it was a very deliberate decision to keep the queries flat.
-So, much like in re-frame, you can not nest queries.
-I strongly believe that not all applications actually need recursive/deeply nested queries.
-
 ## Read
 
 You set up your read functions with **pub**.
@@ -65,7 +61,8 @@ You set up your read functions with **pub**.
 The read function must return 
 
 ```clojure
-{:loc reaction, :rem query}
+{:loc reaction 
+ :rem query}
 ```
 
 Both **:loc** and **:rem** are optional.
@@ -77,7 +74,8 @@ You set up your read functions with **mut**.
 The mutation function must return 
 
 ```clojure
-{:loc db*, :rem query}
+{:loc db* 
+ :rem query}
 ```
 
 Both **:loc** and **:rem** are optional.
@@ -85,6 +83,21 @@ Both **:loc** and **:rem** are optional.
 ## Send
 
 You set up your send function with **send**.
+
+This function will get **req** and **res** arguments.
+
+**req** is the request.
+
+**res** is a callback which your send function will have to call with the response, once it's available from the remote.
+
+The request has the format
+
+```clojure
+{:reads [query0 query1 ...]
+ :muts [query0 query1 ...]}
+```
+
+Both **:reads** and **:muts** are optional.
 
 Note that remlok will be smart enough to batch the queries.
 
@@ -102,7 +115,7 @@ The novelty will have the format
 
 As you can see, those are just **[query data]** pairs, where the **data** is the result of the corresponding **query**.
 
-For example, if you have a send
+For example, if you have a request
 
 ```clojure
 {:reads [[:user 1] [:user 2]]
@@ -146,9 +159,41 @@ remlok has no further opinions on how you handle things on your server.
 
 ## Examples
 
-Check out the examples - TODO
+Check out the examples - [remlok-examples](https://github.com/gumvic/remlok-examples).
 
 They feature optimistic updates and all that!
+
+## FAQ
+
+### Why remlok?
+
+Because you will learn it in dozens of minutes, and it will let you do things that are still often deemed non-trivial. 
+
+(Of course, I'm supposing that you already can read and write Clojure and know what reagent is all about.)
+
+### Why not declarative queries like in om.next?
+
+Well, first of all, your queries is just data, so they **are** declarative; they are just not nested out of the box.
+
+It was a very deliberate decision to keep the queries flat, since the API and all the machinery was getting seriously complicated, and remlok was on the verge of stopping being "miniature".
+
+So, much like in re-frame, you can not nest queries, but I strongly believe that not all applications actually need recursive/deeply nested queries.
+
+(Actually, feel free to check **recursive-queries** branch, which is trying to have om.next-like queries.)
+
+(Also, you can emulate recursive queries **to some extent**, having all that "friend of friend of friend" madness in your **args**.)
+
+### Why request has **:reads** and **:muts**, but response (and novelty in general) do not?
+
+The request sent to your remote has **:reads** and **:muts** to let your remote know how to process each query.
+
+Since queries have exactly the same format for reads and mutations, this will let you know when to use **read** and **mut!** on the remote.
+
+On the other hand, the response is just a vector of pairs **[query data]**.
+
+That's because, from the client's point of view, all that comes from the remote is reads.
+For example, if the client sends a mutation **[:user/new "Alice"]**, the response **[[:user/new "Alice"] {:id 1}]** is not a "mutation", it's a read of the result of that mutation.
+Basically, the client sends reads and mutations, and says, "I want the response to be the **reads** of the results of all those operations I sent".
 
 ## License
 
