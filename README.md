@@ -132,6 +132,14 @@ you may receive
 
 By setting up merge handlers for the topics, you can control how all those things are getting integrated into your application state.
 
+Your merge handler will receive three arguments, **db**, **query**, **data**.
+
+**db** - the current application state.
+
+**query** - the query the result of which you're merging.
+
+**data** - the result of that query.
+
 For example, you may want to patch your temporary ids like this (super naive but demonstrates the point):
 
 ```clojure
