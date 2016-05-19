@@ -1,12 +1,7 @@
 (ns remlok.rem
-  (:refer-clojure :exclude [read]))
-
-;;;;;;;;;;;;;
-;; Helpers ;;
-;;;;;;;;;;;;;
-
-(defn- select-fun [fs [topic _]]
-  (get fs topic (get fs :remlok/default)))
+  (:refer-clojure :exclude [read])
+  (:require
+    [remlok.impl :refer [select-fun]]))
 
 ;;;;;;;;;;;;;;;
 ;; Pub / Sub ;;

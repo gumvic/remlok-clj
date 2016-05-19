@@ -1,6 +1,7 @@
 (ns remlok.loc
   (:refer-clojure :exclude [read merge])
   (:require
+    [remlok.impl :refer [select-fun]]
     [reagent.core :as r]
     [reagent.ratom
      :refer-macros [reaction]
@@ -9,9 +10,6 @@
 ;;;;;;;;;;;;;
 ;; Helpers ;;
 ;;;;;;;;;;;;;
-
-(defn- select-fun [fs [topic _]]
-  (get fs topic (get fs :remlok/default)))
 
 (defn- make-shield [f]
   (binding [*ratom-context* nil]

@@ -1,9 +1,5 @@
 ## TODO
 
-### Fixes
-
-1) :default -> :remlok/default
-
 ### Enhancements
 
 1) Consider adding middleware. Registered for :remlok/mware topic, it will be (db, locrem) -> locrem*
@@ -17,3 +13,5 @@
 1) Add production lein options.
 
 2) Consider creating lein template.
+
+3) There should be at least some tests.
