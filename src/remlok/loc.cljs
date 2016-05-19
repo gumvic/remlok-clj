@@ -6,8 +6,6 @@
      :refer-macros [reaction]
      :refer [*ratom-context*]]))
 
-;; TODO :default -> :remlok/default
-
 ;;;;;;;;;;;;;
 ;; Helpers ;;
 ;;;;;;;;;;;;;
@@ -46,7 +44,6 @@
   [req _]
   (.warn js/console "This send is omitted (see remlok.loc/send): " (str req)))
 
-;; TODO consider adding serialize/deserialize
 (def ^:private sync
   (atom {:scheduled? false
          :reads []

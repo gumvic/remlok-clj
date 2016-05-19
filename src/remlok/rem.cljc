@@ -1,8 +1,6 @@
 (ns remlok.rem
   (:refer-clojure :exclude [read]))
 
-;; TODO :default -> :remlok/default
-
 ;;;;;;;;;;;;;
 ;; Helpers ;;
 ;;;;;;;;;;;;;
