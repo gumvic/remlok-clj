@@ -252,11 +252,11 @@ TODO - :remlok/default topic
 
 ## Remote
 
-Remote is much more simple.
-
 `remlok.rem` namespace exposes `pub`, `mut`, `read` and `mut!` functions, along with the fallbacks `pubf` and `mutf`.
 
 `read` and `mut!` allow you to pass the `ctx`, any clojure value, which will be passed to your handler functions.
+
+remlok has no further opinions on how you handle things on your server.
 
 Something like this:
 
@@ -277,9 +277,11 @@ Something like this:
         res (for [query reads]
               [query (read db-conn query)])]
     (my-edn/serialize res)))
+    
+(my-network/listen!
+  80
+  endpoint)
 ```
-
-remlok has no further opinions on how you handle things on your server.
 
 ## Examples
 
@@ -325,7 +327,7 @@ Just like re-frame, remlok uses global state, so you can have only one applicati
 
 Of course, this solution isn't quite optimal, so any feedback is welcome!
 
-### Why should I handle request by hand on the remote?
+### Why should I handle requests by hand on the remote?
 
 Since you may be composing your response in a non-trivial fashion. 
 
