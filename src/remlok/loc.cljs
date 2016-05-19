@@ -58,7 +58,7 @@
   "Sets the send function.
   Send function is (req, res) -> none
   req is {:reads [query0 query1 ...], :muts [query0 query1 ...]}.
-  res should be [[query0 data0], [query1 data1], ...].
+  response should be [[query0 data0], [query1 data1], ...].
   The responsibility of the function will be to pass the req to the remote, and call the res with the response."
   [f]
   (swap! sync assoc :send f))
@@ -72,9 +72,8 @@
 
 (defn merge!
   "Merges the novelty.
-  The novelty should be [[query0 data0], [query1 data1], ...].
-  Note that the response shouldn't necessarily come from the remote, this function can be called at any time with any arbitrary novelty."
-  [res]
+  nov should be [[query0 data0], [query1 data1], ...]."
+  [nov]
   (let [mfs (get @sync :merge)]
     (swap!
       db
@@ -84,7 +83,7 @@
             (f db query data)))
         %1
         %2)
-      res)))
+      nov)))
 
 (defn- sync! []
   (let [{:keys [send reads muts]} @sync
@@ -106,6 +105,7 @@
       (swap! sync assoc :scheduled? true)
       (js/setTimeout sync! 0))))
 
+;; TODO don't include identical queries
 (defn- sched-read! [query]
   (swap! sync update :reads conj query)
   (sched-sync!))

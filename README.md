@@ -12,10 +12,12 @@ If haven't already, you really want to read [re-frame tutorial](https://github.c
 
 If you have used re-frame, you will get a grasp of this one in no time.
 
+Understanding of how reagent reactions work is required.
+
 Also, note that remlok is a no-magic framework. 
 It keeps things simple and not surprising, but this also means that you shouldn't be afraid to get your hands dirty, since it doesn't do much by default.
 
-## Usage
+## What it does
 
 This is what happens in remlok:
 
@@ -194,7 +196,7 @@ TODO - :remlok/default topic
 
 Remote is much more simple.
 
-**remlok.rem** namespace exposes **pub**, **mut**, **read** and **mut!** functions.
+**remlok.rem** namespace exposes **pub**, **mut**, **read** and **mut!** functions, along with the fallbacks **pubf** and **mutf**.
 
 **read** and **mut!** allow you to pass the **ctx**, any clojure value, which will be passed to your handler functions.
 
