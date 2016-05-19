@@ -21,26 +21,25 @@ It keeps things simple and not surprising, but this also means that you shouldn'
 
 This is what happens when you use remlok:
 
-```
-db -> [read](#read) -> :loc -> render -> user action -> [mut!](#mutation) -> :loc -> db*
-            |                                         |
-            v                                         v
-          :rem                                      :rem
-            |                                         |
-             --------> batch and [send](#send) <------
-                                |
-                                v
-                              remote
-                                |
-                                v
-                        [merge!](#merge)
-                                |
-                                v
-                               db*
-```
+<pre>
+db -&gt; <a href="#read">read</a> -&gt; :loc -&gt; <a href="#render">render</a> -&gt; user action -&gt; <a href="#mutation">mut!</a> -&gt; :loc -&gt; db*
+        |                                       |
+        v                                       v
+      :rem                                    :rem
+        |                                       |
+         ------------&gt; <a href="#send">send</a> &lt;-------------------
+                         |
+                         v
+                       remote
+                         |
+                         v
+                       <a href="#merge">merge!</a>
+                         |
+                         v
+                         db*
+</pre>
 
-It's your typical [eternal cycle of data, flowing](https://github.com/Day8/re-frame#derived-data-everywhere-flowing).
-But with a twist - it has a branch which leads to the remote.
+It's your typical [eternal cycle of data, flowing](https://github.com/Day8/re-frame#dispatching-events), but with a twist - it has a branch which leads to the remote.
 
 As you can see, remlok allows you to have your say on every step of the application lifecycle.
 It also tries to be as predictable and reasonable as possible with its default actions.
@@ -95,6 +94,20 @@ Read function must return this [locrem](#locrem)
 ```clojure
 {:loc reaction 
  :rem query}
+```
+
+## Render
+
+Just use reagent components.
+
+```clojure
+(defn users []
+  (let [users (read [:users {:first 10}])]
+    (fn []
+      [:ul
+        (for [{:keys [id name]} @users]
+          ^{:key id}
+          [:li name])])))
 ```
 
 ## Mutation
