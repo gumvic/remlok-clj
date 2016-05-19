@@ -8,7 +8,7 @@
 
 1) Consider adding serialize/deserialize step, with edn fallback
 
-2) Consider adding middleware. Registered for :remlok/mid topic, it will be (db, locrem) -> locrem*
+2) Consider adding middleware. Registered for :remlok/mware topic, it will be (db, locrem) -> locrem*
 
 ### Misc
  

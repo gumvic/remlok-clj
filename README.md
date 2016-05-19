@@ -48,6 +48,18 @@ This is what happens in remlok:
 As you can see, remlok allows you to have your say on every step of the application lifecycle.
 It also tries to be as predictable and reasonable as possible with its default actions.
 
+## TODO
+
+This is what happens:
+
+db -> [read](#read) -> render -> user action -> [mut!](#mutation) -> db*
+
+send
+
+Meanwhile, the remote handles the request and returns the response:
+
+response -> [merge!](#merge) -> db*
+
 ## Locrem
 
 A locrem is a map
@@ -68,6 +80,8 @@ A query is a pair
 ```
 
 Both for reads and mutations.
+
+It is considered normal to omit the **args**, e. g. [:cur-user], [:log-out] etc.
 
 ## Read
 
@@ -228,7 +242,7 @@ This will be usable if you want to handle push updates from the remote (i. e. wh
 
 ## Fallbacks
 
-remlok provides fallbacks for everything, so it can function on its own.
+remlok provides fallbacks for everything, so it can function on its own, without you specifying a single handler.
 (Obviously, the send fallback doesn't actually do anything except emitting a warning that it doesn't do anything.)
 
 Fallbacks have **f** at the end - **pubf**, **mutf**, **sendf** and **mergef** and are public.
