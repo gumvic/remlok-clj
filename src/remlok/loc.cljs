@@ -28,12 +28,12 @@
 
 (defn mergef
   "Default merge function.
-  If args is not nil, will (assoc-in db [topic args] data)
+  If topic is a vector, will (assoc-in db topic data)
   Otherwise, will (assoc db topic data)"
   [db query data]
-  (let [[topic args] query]
-    (if (some? args)
-      (assoc-in db [topic args] data)
+  (let [[topic _] query]
+    (if (vector? topic)
+      (assoc-in db topic data)
       (assoc db topic data))))
 
 (defn sendf

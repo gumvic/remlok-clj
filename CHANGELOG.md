@@ -3,6 +3,7 @@
 - README
 - `pubf`
 - `mutf`
+- `mergef`
 
 ## [0.2.0] - 2016-05-18
 ### Added
