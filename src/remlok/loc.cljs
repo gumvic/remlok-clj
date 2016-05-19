@@ -115,7 +115,7 @@
 ;; Pub / Sub ;;
 ;;;;;;;;;;;;;;;
 
-;; TODO should this try to synchronize if there's nothing in the db?
+;; TODO should handle vector topics, too
 (defn pubf
   "Default publication function.
   If args is not nil, will create a reaction of (get-in @db [topic args])
@@ -128,7 +128,7 @@
      (reaction
        (get @db topic)))})
 
-;; TODO should this try to synchronize and how?
+;; TODO should handle vector topics, too
 (defn mutf
   "Default mutation function.
   Will simply (assoc db topic args)"

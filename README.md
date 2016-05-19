@@ -30,13 +30,13 @@ db -&gt; <a href="#read">read</a> -&gt; :loc -&gt; <a href="#render">render</a> 
          ------------&gt; <a href="#send">send</a> &lt;-------------------
                          |
                          v
-                       remote
+                       <a href="#remote">remote</a>
                          |
                          v
                        <a href="#merge">merge!</a>
                          |
                          v
-                         db*
+                        db*
 </pre>
 
 It's your typical [eternal cycle of data, flowing](https://github.com/Day8/re-frame#dispatching-events), but with a twist - it has a branch which leads to the remote.
@@ -258,6 +258,27 @@ Remote is much more simple.
 
 `read` and `mut!` allow you to pass the `ctx`, any clojure value, which will be passed to your handler functions.
 
+Something like this:
+
+```clojure
+(pub
+  :users
+  (fn [db-conn [_ {:keys [name]}]]
+    (my-sql-lib/select
+      db-conn
+      "select * from users where name = :name"
+      {:name name})))
+
+(def db-conn 
+  (my-sql-lib/open-connection))
+
+(defn endpoint [req]
+  (let [{:keys [reads]} (my-edn/deserialize req)
+        res (for [query reads]
+              [query (read db-conn query)])]
+    (my-edn/serialize res)))
+```
+
 remlok has no further opinions on how you handle things on your server.
 
 ## Examples
@@ -303,6 +324,12 @@ Basically, the client sends reads and mutations, and says, "I want the response 
 Just like re-frame, remlok uses global state, so you can have only one application per client context (and only one application per server context, for that matter).
 
 Of course, this solution isn't quite optimal, so any feedback is welcome!
+
+### Why should I handle request by hand on the remote?
+
+Since you may be composing your response in a non-trivial fashion. 
+
+One of the examples, "Wiki Autocompleter", features such a case (it uses core.async to wait for the reads to be completed).
 
 ## License
 

@@ -6,9 +6,11 @@
 
 ### Enhancements
 
-1) Consider adding serialize/deserialize step, with edn fallback
+1) Consider adding middleware. Registered for :remlok/mware topic, it will be (db, locrem) -> locrem*
 
-2) Consider adding middleware. Registered for :remlok/mware topic, it will be (db, locrem) -> locrem*
+2) Minor enhancements (see TODOs in the source).
+
+3) Consider adding send/sendf on the remote.
 
 ### Misc
  
