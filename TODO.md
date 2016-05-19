@@ -2,7 +2,7 @@
 
 ### Enhancements
 
-1) Consider adding middleware. Registered for :remlok/mware topic, it will be (db, locrem) -> locrem*
+1) Consider adding middleware. Registered for :remlok/mware topic, it will be (handler) -> handler*
 
 2) Minor enhancements (see TODOs in the source).
 

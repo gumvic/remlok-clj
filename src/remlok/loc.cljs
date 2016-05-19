@@ -83,7 +83,7 @@
 (defn- sync! []
   (let [{:keys [send reads muts]} @sync
         req (cljs.core/merge
-              (when (seq reads) {:reads reads})
+              (when (seq reads) {:reads (distinct reads)})
               (when (seq muts) {:muts muts}))]
     (when (seq req)
       (send req merge!)
@@ -100,7 +100,6 @@
       (swap! sync assoc :scheduled? true)
       (js/setTimeout sync! 0))))
 
-;; TODO don't include identical queries
 (defn- sched-read! [query]
   (swap! sync update :reads conj query)
   (sched-sync!))
