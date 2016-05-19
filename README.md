@@ -17,50 +17,37 @@ Understanding of how reagent components and reactions work is required.
 Also, note that remlok is a no-magic framework. 
 It keeps things simple and not surprising, but this also means that you shouldn't be afraid to get your hands dirty, since it doesn't do much by default.
 
-## What it does
+## In a nutshell
 
-This is what happens in remlok:
+This is what happens when you use remlok:
 
-1) Set up.
+```
+db -> [read](#read) -> :loc -> render -> user action -> [mut!](#mutation) -> :loc -> db*
+            |                                         |
+            v                                         v
+          :rem                                      :rem
+            |                                         |
+             --------> batch and [send](#send) <------
+                                |
+                                v
+                              remote
+                                |
+                                v
+                        [merge!](#merge)
+                                |
+                                v
+                               db*
+```
 
-1.1) You [pub](#read) and [mut](#mutation) functions to handle reads and mutations.
-
-1.2) You [send](#send) a function which will talk to the remote.
- 
-1.3) You [merge](#merge) a function which will merge the responses.
-
-2) Your reagent components read [queries](#query).
-
-2.1) remlok uses the corresponding handler, or falls back to the default.
-
-2.2) The read handler returns a [locrem](#locrem). 
-
-3) Your user does something, and your components [mut!](#mutation) that.
-
-3.1) remlok uses the corresponding handler, or falls back to the default.
-
-3.2) The mutation handler returns a [locrem](#locrem).
-
-4) The [response](#novelty) from the remote comes back to be merged.
-
-4.1) remlok uses the corresponding handler, or falls back to the default.
+It's your typical [eternal cycle of data, flowing](https://github.com/Day8/re-frame#derived-data-everywhere-flowing).
+But with a twist - it has a branch which leads to the remote.
 
 As you can see, remlok allows you to have your say on every step of the application lifecycle.
 It also tries to be as predictable and reasonable as possible with its default actions.
 
-## TODO
-
-This is what happens:
-
-db -> [read](#read) -> render -> user action -> [mut!](#mutation) -> db*
-
-send
-
-Meanwhile, the remote handles the request and returns the response:
-
-response -> [merge!](#merge) -> db*
-
 ## Locrem
+
+Read and mutation functions return locrems.
 
 A locrem is a map
 
@@ -69,7 +56,7 @@ A locrem is a map
  :rem send-this-to-remote}
 ```
 
-Both **:loc** and **:rem** are optional.
+Both `:loc` and `:rem` are optional.
 
 ## Query
 
@@ -81,11 +68,11 @@ A query is a pair
 
 Both for reads and mutations.
 
-It is considered normal to omit the **args**, e. g. [:cur-user], [:log-out] etc.
+It is considered appropriate to omit the `args`, e. g. `[:cur-user]`, `[:log-out]` etc.
 
 ## Read
 
-You set up your read functions with **pub** like this
+You set up your read functions with `pub` like this
 
 ```clojure
 (pub
@@ -97,11 +84,11 @@ You set up your read functions with **pub** like this
 
 remlok will use the query's topic to decide on the read function. 
 
-Read function will receive two arguments, **db** and **query**.
+Read function will receive two arguments, `db` and `query`.
 
-**db** - the application state ratom.
+`db` - the application state ratom.
 
-**query** - the query to read.
+`query` - the query to read.
 
 Read function must return this [locrem](#locrem) 
 
@@ -112,7 +99,7 @@ Read function must return this [locrem](#locrem)
 
 ## Mutation
 
-You set up your mutation functions with **mut** like this
+You set up your mutation functions with `mut` like this
 
 ```clojure
 (mut
@@ -124,11 +111,11 @@ You set up your mutation functions with **mut** like this
 
 remlok will use the query's topic to decide on the mutation function. 
 
-Mutation function will receive two arguments, **db** and **query**.
+Mutation function will receive two arguments, `db` and `query`.
 
-**db** - the application state.
+`db` - the application state.
 
-**query** - the query to read.
+`query` - the query to read.
 
 Mutation function must return this [locrem](#locrem) 
 
@@ -139,7 +126,7 @@ Mutation function must return this [locrem](#locrem)
 
 ## Send
 
-You set up your send function with **send** like this
+You set up your send function with `send` like this
 
 ```clojure
 (send
@@ -149,11 +136,11 @@ You set up your send function with **send** like this
       (comp res my-edn/deserialize))))
 ```
 
-Send function will receive **req** and **res** arguments.
+Send function will receive `req` and `res` arguments.
 
-**req** - the request.
+`req` - the request.
 
-**res** - the callback to call with the [response](#novelty), once it's available from the remote.
+`res` - the callback to call with the [response](#novelty), once it's available from the remote.
 
 The request has the format
 
@@ -185,20 +172,20 @@ You set up your merge function with **merge** like this
 
 remlok will use the query's topic to decide on the merge function.
 
-Merge function will receive three arguments, **db**, **query** and **data**.
+Merge function will receive three arguments, `db`, `query` and `data`.
 
-**db** - the application state.
+`db` - the application state.
 
-**query** - the query, the result of which you're merging.
+`query` - the query, the result of which you're merging.
 
-**data** - the result itself.
+`data` - the result itself.
 
 Merge function must return the new application state.
 
 How does merging work?
 
-The function which merges a novelty is called **merge!**.
-remlok will call it for you, when your send function calls its **res** callback.
+The function which merges a novelty is called `merge!`.
+remlok will call it for you, when your send function calls its `res` callback.
 
 As we already know, the novelty should have the format 
 
@@ -206,7 +193,7 @@ As we already know, the novelty should have the format
 [[query0 data0] [query1 data1] ...]
 ```
 
-As you can see, those are just **[query data]** pairs, where the **data** is the result of the corresponding **query**.
+As you can see, those are just `[query data]` pairs, where the `data` is the result of the corresponding `query`.
 
 For example, if you have a request
 
@@ -237,7 +224,7 @@ For example, you may want to patch your temporary ids like this (super naive but
         (assoc-in [:users id] user)))))
 ```
 
-Note that you can call **merge!** by yourself at any time with any properly formatted novelty.
+Note that you can call `merge!` by yourself at any time with any properly formatted novelty.
 This will be usable if you want to handle push updates from the remote (i. e. when there's no send before the merge).
 
 ## Fallbacks
@@ -245,7 +232,7 @@ This will be usable if you want to handle push updates from the remote (i. e. wh
 remlok provides fallbacks for everything, so it can function on its own, without you specifying a single handler.
 (Obviously, the send fallback doesn't actually do anything except emitting a warning that it doesn't do anything.)
 
-Fallbacks have **f** at the end - **pubf**, **mutf**, **sendf** and **mergef** and are public.
+Fallbacks have **f** at the end - `pubf`, `mutf`, `sendf` and `mergef`, and are public.
 Their docstrings explain what they do (they don't do a whole lot).
 
 TODO - :remlok/default topic
@@ -254,9 +241,9 @@ TODO - :remlok/default topic
 
 Remote is much more simple.
 
-**remlok.rem** namespace exposes **pub**, **mut**, **read** and **mut!** functions, along with the fallbacks **pubf** and **mutf**.
+`remlok.rem` namespace exposes `pub`, `mut`, `read` and `mut!` functions, along with the fallbacks `pubf` and `mutf`.
 
-**read** and **mut!** allow you to pass the **ctx**, any clojure value, which will be passed to your handler functions.
+`read` and `mut!` allow you to pass the `ctx`, any clojure value, which will be passed to your handler functions.
 
 remlok has no further opinions on how you handle things on your server.
 
@@ -284,18 +271,18 @@ So, much like in re-frame, you can not nest queries, but I strongly believe that
 
 (Actually, feel free to check **recursive-queries** branch, which is trying to have om.next-like queries.)
 
-(Also, you can emulate recursive queries **to some extent**, having all that "friend of friend of friend" madness in your **args**.)
+(Also, you can emulate recursive queries **to some extent**, having all that "friend of friend of friend" madness in your `args`.)
 
-### Why request has **:reads** and **:muts**, but response (and novelty in general) does not?
+### Why request has :reads and :muts, but response (and novelty in general) does not?
 
-The request sent to your remote has **:reads** and **:muts** to let your remote know how to process each query.
+The request sent to your remote has `:reads` and `:muts` to let your remote know how to process each query.
 
-Since queries have exactly the same format for reads and mutations, this will let you know when to use **read** and **mut!** on the remote.
+Since queries have exactly the same format for reads and mutations, this will let you know when to use `read` and `mut!` on the remote.
 
-On the other hand, the response is just a vector of pairs **[query data]**.
+On the other hand, the response is just a vector of pairs `[query data]`.
 
 That's because, from the client's point of view, all that comes from the remote is reads.
-For example, if the client sends a mutation **[:user/new "Alice"]**, the response **[[:user/new "Alice"] {:id 1}]** is not a "mutation", it's a read of the result of that mutation.
+For example, if the client sends a mutation `[:user/new "Alice"]`, the response `[[:user/new "Alice"] {:id 1}]` is not a "mutation", it's a read of the result of that mutation.
 Basically, the client sends reads and mutations, and says, "I want the response to be the **reads** of the results of all those operations I sent".
 
 ### Why global state?
