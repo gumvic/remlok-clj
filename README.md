@@ -25,36 +25,28 @@ This is what happens in remlok:
 
 1.1) You [pub](#read) and [mut](#mutation) functions to handle reads and mutations.
 
-1.2) If you want to talk to your remote, you **send** a function which will do that.
+1.2) You [send](#send) a function which will talk to the remote.
  
-1.3) If you want to control how the response from the remote gets merged into the application state, you **merge** a function which will do that.
+1.3) You [merge](#merge) a function which will merge the responses.
 
-2) Your reagent components **read** queries.
+2) Your reagent components read [queries](#query).
 
 2.1) remlok uses the corresponding handler, or falls back to the default.
 
-2.2) The read handler returns **{:loc, :rem}**; **:loc** is given to the component, **:rem** goes to the remote. 
+2.2) The read handler returns a [locrem](#locrem). 
 
-3) Your user does something, and your components **mut!** that.
+3) Your user does something, and your components [mut!](#mutation) that.
 
 3.1) remlok uses the corresponding handler, or falls back to the default.
 
-3.2) The mutation handler returns **{:loc, :rem}**; **:loc** is the new state, **:rem** goes to the remote.
+3.2) The mutation handler returns a [locrem](#locrem).
 
-4) The response from the remote comes back to be merged.
+4) The [response](#novelty) from the remote comes back to be merged.
 
 4.1) remlok uses the corresponding handler, or falls back to the default.
 
 As you can see, remlok allows you to have your say on every step of the application lifecycle.
 It also tries to be as predictable and reasonable as possible with its default actions.
-
-## Query
-
-A query is just **[topic args]**, both for reads and mutations.
-
-When you **pub/mut**, you set up the handler for the topic.
-
-When you **merge**, you also set up the handler for the topic.
 
 ## Locrem
 
@@ -67,9 +59,27 @@ A locrem is a map
 
 Both **:loc** and **:rem** are optional.
 
+## Query
+
+A query is a pair
+
+```clojure
+[topic args]
+```
+
+Both for reads and mutations.
+
 ## Read
 
-You set up your read functions with **pub**.
+You set up your read functions with **pub** like this
+
+```clojure
+(pub
+  :cur-user
+  (fn [db _] ;; this is the read function
+    {:loc (reaction 
+            (get @db :cur-user))}))
+```
 
 remlok will use the query's topic to decide on the read function. 
 
@@ -79,18 +89,24 @@ Read function will receive two arguments, **db** and **query**.
 
 **query** - the query to read.
 
-Read function must return 
+Read function must return this [locrem](#locrem) 
 
 ```clojure
 {:loc reaction 
  :rem query}
 ```
 
-Both **:loc** and **:rem** are optional.
-
 ## Mutation
 
-You set up your mutation functions with **mut**.
+You set up your mutation functions with **mut** like this
+
+```clojure
+(mut
+  :logout
+  (fn [db _] ;; this is the mutation function
+    {:loc (dissoc db :cur-user)
+     :rem [:log-out]}))
+```
 
 remlok will use the query's topic to decide on the mutation function. 
 
@@ -100,24 +116,30 @@ Mutation function will receive two arguments, **db** and **query**.
 
 **query** - the query to read.
 
-Mutation function must return 
+Mutation function must return this [locrem](#locrem) 
 
 ```clojure
 {:loc db* 
  :rem query}
 ```
 
-Both **:loc** and **:rem** are optional.
-
 ## Send
 
-You set up your send function with **send**.
+You set up your send function with **send** like this
+
+```clojure
+(send
+  (fn [req res] ;; this is the send function
+    (my-network/send
+      (my-edn/serialize req)
+      (comp res my-edn/deserialize))))
+```
 
 Send function will receive **req** and **res** arguments.
 
 **req** - the request.
 
-**res** - the callback to call with the response, once it's available from the remote.
+**res** - the callback to call with the [response](#novelty), once it's available from the remote.
 
 The request has the format
 
@@ -126,17 +148,26 @@ The request has the format
  :muts [query0 query1 ...]}
 ```
 
-The response should have the format
+Note that remlok will be smart enough to batch the queries.
+
+## Novelty
+
+The novelty must have the format
 
 ```clojure
 [[query0 data0] [query1 data1] ...]
 ```
 
-Note that remlok will be smart enough to batch the queries.
-
 ## Merge
 
-You set up your merge function with **merge**.
+You set up your merge function with **merge** like this
+
+```clojure
+(merge
+  :new-score
+  (fn [db _ score] ;; this is the merge function
+    (update db :score + score)))
+```
 
 remlok will use the query's topic to decide on the merge function.
 
@@ -147,6 +178,8 @@ Merge function will receive three arguments, **db**, **query** and **data**.
 **query** - the query, the result of which you're merging.
 
 **data** - the result itself.
+
+Merge function must return the new application state.
 
 How does merging work?
 
