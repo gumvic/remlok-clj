@@ -6,7 +6,7 @@
 
 2) Minor enhancements (see TODOs in the source).
 
-3) Consider adding send/sendf on the remote (update README in this case).
+3) Consider adding send/sendf on the remote (update README in this case, Fallback section).
 
 ### Misc
  
