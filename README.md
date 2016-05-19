@@ -240,16 +240,6 @@ For example, you may want to patch your temporary ids like this (super naive but
 Note that you can call `merge!` by yourself at any time with any properly formatted novelty.
 This will be usable if you want to handle push updates from the remote (i. e. when there's no send before the merge).
 
-## Fallbacks
-
-remlok provides fallbacks for everything, so it can function on its own, without you specifying a single handler.
-(Obviously, the send fallback doesn't actually do anything except emitting a warning that it doesn't do anything.)
-
-Fallbacks have **f** at the end - `pubf`, `mutf`, `sendf` and `mergef`, and are public.
-Their docstrings explain what they do (they don't do a whole lot).
-
-TODO - :remlok/default topic
-
 ## Remote
 
 `remlok.rem` namespace exposes `pub`, `mut`, `read` and `mut!` functions, along with the fallbacks `pubf` and `mutf`.
@@ -281,6 +271,38 @@ Something like this:
 (my-network/listen!
   80
   endpoint)
+```
+
+## Fallbacks
+
+remlok provides fallbacks for everything, so it can function on its own, without you specifying a single handler.
+(Obviously, the send fallback doesn't actually do anything except emitting a warning that it doesn't do anything.)
+
+Fallbacks have **f** at the end - `pubf`, `mutf`, `sendf` and `mergef`, and are public.
+Their docstrings explain what they do (they don't do a whole lot).
+
+Read, mutation and merge fallbacks are initially registered for `:remlok/default` topic.
+When remlok can't find the handler for a topic, it just uses whatever handles `:remlok/default`.
+Note that the handler is given the initial query (and, therefore, the initial topic).
+
+Of course, you can set up your own fallback (the "default" handler):
+
+```clojure
+(pub
+  :remlok/default
+  (fn [db query]
+    (println "Warning! Unknown query " (str query))
+    nil ;; nil is explicit to emphasize that we are returning an empty locrem
+    ))
+```
+
+Note that even if you set up your own default handler, you still can use default fallbacks:
+
+```clojure
+(pub
+  :search-input
+  pubf ;; simple enough for pubf to handle
+  )
 ```
 
 ## Examples

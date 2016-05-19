@@ -1,9 +1,9 @@
 ## [0.3.0] - 2016-05-??
 ### Changed
-- README
-- `pubf`
-- `mutf`
-- `mergef`
+- much better README
+- `pubf` behaviour
+- `mutf` behaviour
+- `mergef` behaviour
 
 ## [0.2.0] - 2016-05-18
 ### Added
