@@ -112,25 +112,27 @@
 ;; Pub / Sub ;;
 ;;;;;;;;;;;;;;;
 
-;; TODO should handle vector topics, too
 (defn pubf
   "Default publication function.
-  If args is not nil, will create a reaction of (get-in @db [topic args])
+  If topic is a vector, will create a reaction of (get-in @db topic)
   Otherwise, will create a reaction of (get @db topic)"
-  [db [topic args]]
+  [db [topic _]]
   {:loc
-   (if (some? args)
+   (if (vector? topic)
      (reaction
-       (get-in @db [topic args]))
+       (get-in @db topic))
      (reaction
        (get @db topic)))})
 
-;; TODO should handle vector topics, too
 (defn mutf
   "Default mutation function.
-  Will simply (assoc db topic args)"
+  If topic is a vector, will (assoc-in db topic args)
+  Otherwise, will (assoc db topic args)"
   [db [topic args]]
-  {:loc (assoc db topic args)})
+  {:loc
+   (if (vector? topic)
+     (assoc-in db topic args)
+     (assoc db topic args))})
 
 (def ^:private pubs
   (atom
