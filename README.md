@@ -12,7 +12,7 @@ If haven't already, you really want to read [re-frame tutorial](https://github.c
 
 If you have used re-frame, you will get a grasp of this one in no time.
 
-Understanding of how reagent reactions work is required.
+Understanding of how reagent components and reactions work is required.
 
 Also, note that remlok is a no-magic framework. 
 It keeps things simple and not surprising, but this also means that you shouldn't be afraid to get your hands dirty, since it doesn't do much by default.
