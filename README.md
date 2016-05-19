@@ -174,7 +174,7 @@ The novelty must have the format
 
 ## Merge
 
-You set up your merge function with **merge** like this
+You set up your merge function with `merge` like this
 
 ```clojure
 (merge
