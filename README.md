@@ -23,7 +23,7 @@ This is what happens in remlok:
 
 1) Set up.
 
-1.1) You **pub** and **mut** functions to handle reads and mutations.
+1.1) You [pub](#read) and [mut](#mutation) functions to handle reads and mutations.
 
 1.2) If you want to talk to your remote, you **send** a function which will do that.
  
@@ -55,6 +55,17 @@ A query is just **[topic args]**, both for reads and mutations.
 When you **pub/mut**, you set up the handler for the topic.
 
 When you **merge**, you also set up the handler for the topic.
+
+## Locrem
+
+A locrem is a map
+
+```clojure
+{:loc local-result 
+ :rem send-this-to-remote}
+```
+
+Both **:loc** and **:rem** are optional.
 
 ## Read
 
