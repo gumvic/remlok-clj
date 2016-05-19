@@ -11,7 +11,7 @@
 ;;;;;;;;;;;;;
 
 (defn- select-fun [fs [topic _]]
-  (get fs topic (get fs :default)))
+  (get fs topic (get fs :remlok/default)))
 
 (defn- make-shield [f]
   (binding [*ratom-context* nil]
@@ -49,7 +49,7 @@
          :reads []
          :muts []
          :send sendf
-         :merge {:default mergef}}))
+         :merge {:remlok/default mergef}}))
 
 (defn send
   "Sets the send function.
@@ -137,11 +137,11 @@
 
 (def ^:private pubs
   (atom
-    {:default pubf}))
+    {:remlok/default pubf}))
 
 (def ^:private muts
   (atom
-    {:default mutf}))
+    {:remlok/default mutf}))
 
 (defn pub
   "Publishes the topic using the supplied function.

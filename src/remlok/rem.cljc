@@ -6,7 +6,7 @@
 ;;;;;;;;;;;;;
 
 (defn- select-fun [fs [topic _]]
-  (get fs topic (get fs :default)))
+  (get fs topic (get fs :remlok/default)))
 
 ;;;;;;;;;;;;;;;
 ;; Pub / Sub ;;
@@ -26,11 +26,11 @@
 
 (def ^:private pubs
   (atom
-    {:default pubf}))
+    {:remlok/default pubf}))
 
 (def ^:private muts
   (atom
-    {:default mutf}))
+    {:remlok/default mutf}))
 
 (defn pub
   "Publishes the topic using the supplied function.
