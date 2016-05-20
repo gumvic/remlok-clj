@@ -1,9 +1,10 @@
-## [0.3.0] - 2016-05-??
+## [0.3.0] - 2016-05-20
 ### Changed
 - much better README
 - `pubf` behaviour
 - `mutf` behaviour
 - `mergef` behaviour
+- docstrings
 
 ## [0.2.0] - 2016-05-18
 ### Added

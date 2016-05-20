@@ -29,26 +29,26 @@
 
 (defn pub
   "Publishes the topic using the supplied function.
-  The function must be (ctx, query) -> any"
+  The function must be (ctx, query) -> any
+  Use :remlok/default topic to set the fallback."
   [attr f]
   (swap! pubs assoc attr f))
 
 (defn mut
   "Sets the mutation handler for the topic using the supplied function.
-  The function must be (ctx, query) -> any"
+  The function must be (ctx, query) -> any
+  Use :remlok/default topic to set the fallback."
   [attr f]
   (swap! muts assoc attr f))
 
 (defn read
-  "Reads the query using the function set by pub.
-  Will fallback to the default (pubf) if no function is found for the topic."
+  "Reads the query using the function set by pub."
   [ctx query]
   (let [f (select-fun @pubs query)]
     (f ctx query)))
 
 (defn mut!
-  "Performs mutation using the function set by mut.
-  Will fallback to the default (mutf) if no function is found for the topic."
+  "Performs mutation using the function set by mut."
   [ctx query]
   (let [f (select-fun @muts query)]
     (f ctx query)))

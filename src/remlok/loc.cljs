@@ -61,7 +61,8 @@
 (defn merge
   "Sets the merge function for the topic.
   Merge function is (db, query, data) -> db*
-  Note that the db will be already derefed."
+  Note that the db will be already derefed.
+  Use :remlok/default topic to set the fallback."
   [topic f]
   (swap! sync assoc-in [:merge topic] f))
 
@@ -146,7 +147,8 @@
   "Publishes the topic using the supplied function.
   The function must be (db, query) -> {:loc reaction, :rem query}
   Both :loc and :rem are optional.
-  Note that the db will not be derefed, so that you can build a reaction."
+  Note that the db will not be derefed, so that you can build a reaction.
+  Use :remlok/default topic to set the fallback."
   [topic f]
   (swap! pubs assoc topic f))
 
@@ -154,7 +156,8 @@
   "Sets the mutation handler for the topic using the supplied function.
   The function must be (db, query) -> {:loc db*, :rem query}
   Both :loc and :rem are optional.
-  Note that the db will be already derefed."
+  Note that the db will be already derefed.
+  Use :remlok/default topic to set the fallback."
   [topic f]
   (swap! muts assoc topic f))
 
