@@ -1,14 +1,18 @@
 (ns remlok.impl)
 
-;;;;;;;;;;;;;
-;; Helpers ;;
-;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;
+;; Per Topic Handlers ;;
+;;;;;;;;;;;;;;;;;;;;;;;;
 
-#_(defn select-fun [fs [topic _]]
-  (let [df (get fs :remlok/default)
-        f (get fs topic df)
-        mware (get fs :remlok/mware)]
-    (mware f)))
+(defn handlers [mware default]
+  {:remlok/mware mware
+   :remlok/default default})
 
-(defn- select-fun [fs [topic _]]
-  (get fs topic (get fs :remlok/default)))
+(defn handle [handlers topic handler]
+  (assoc handlers topic handler))
+
+(defn handler [handlers topic]
+  (let [mware (get handlers :remlok/mware)
+        def (get handlers :remlok/default)
+        handler (get handlers topic def)]
+    (mware handler)))

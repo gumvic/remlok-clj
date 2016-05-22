@@ -1,7 +1,7 @@
 (ns remlok.loc
   (:refer-clojure :exclude [read merge])
   (:require
-    [remlok.impl :refer [select-fun]]
+    [remlok.impl :refer [handlers handle handler]]
     [reagent.core :as r]
     [reagent.ratom
      :refer-macros [reaction]
@@ -47,7 +47,7 @@
          :reads []
          :muts []
          :send sendf
-         :merge {:remlok/default mergef}}))
+         :merge (handlers identity mergef)}))
 
 (defn send
   "Sets the send function.
@@ -64,18 +64,18 @@
   Note that the db will be already derefed.
   Use :remlok/default topic to set the fallback."
   [topic f]
-  (swap! sync assoc-in [:merge topic] f))
+  (swap! sync update :merge handle topic f))
 
 (defn merge!
   "Merges the novelty.
   nov should be [[query0 data0], [query1 data1], ...]."
   [nov]
-  (let [mfs (get @sync :merge)]
+  (let [hs (get @sync :merge)]
     (swap!
       db
       #(reduce
-        (fn [db [query data]]
-          (let [f (select-fun mfs query)]
+        (fn [db [[topic _ :as query] data]]
+          (let [f (handler hs topic)]
             (f db query data)))
         %1
         %2)
@@ -137,11 +137,11 @@
 
 (def ^:private pubs
   (atom
-    {:remlok/default pubf}))
+    (handlers identity pubf)))
 
 (def ^:private muts
   (atom
-    {:remlok/default mutf}))
+    (handlers identity mutf)))
 
 (defn pub
   "Publishes the topic using the supplied function.
@@ -150,7 +150,7 @@
   Note that the db will not be derefed, so that you can build a reaction.
   Use :remlok/default topic to set the fallback."
   [topic f]
-  (swap! pubs assoc topic f))
+  (swap! pubs handle topic f))
 
 (defn mut
   "Sets the mutation handler for the topic using the supplied function.
@@ -159,7 +159,7 @@
   Note that the db will be already derefed.
   Use :remlok/default topic to set the fallback."
   [topic f]
-  (swap! muts assoc topic f))
+  (swap! muts handle topic f))
 
 (defn read
   "Reads the query using the function set by pub.
@@ -168,7 +168,8 @@
   Will fallback to the default (pubf) if no function is found for the topic.
   Returns a reaction."
   [query]
-  (let [f (select-fun @pubs query)
+  (let [[topic _] query
+        f (handler @pubs topic)
         {:keys [loc rem]} (make-shield #(f db query))]
     (when (some? rem)
       (sched-read! rem))
@@ -183,7 +184,8 @@
   Will fallback to the default (mutf) if no function is found for the topic.
   Always returns nil."
   [query]
-  (let [f (select-fun @muts query)
+  (let [[topic _] query
+        f (handler @muts topic)
         {:keys [loc rem]} (make-shield #(f @db query))]
     (when (some? loc)
       (reset! db loc))
