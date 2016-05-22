@@ -7,13 +7,11 @@
 ;; Pub / Sub ;;
 ;;;;;;;;;;;;;;;
 
-;; TODO emit cross-platform warning
 (defn pubf
   "Default publication function.
   Doesn't do anything."
   [_ _])
 
-;; TODO emit cross-platform warning
 (defn mutf
   "Default mutation function.
   Doesn't do anything."

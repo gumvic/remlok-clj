@@ -38,7 +38,7 @@
 
 (defn sendf
   "Default send function.
-  Doesn't do anything, will emit a warning when used."
+  Doesn't do anything."
   [req _]
   (.warn js/console "This send is omitted (see remlok.loc/send): " (str req)))
 
