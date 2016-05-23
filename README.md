@@ -44,19 +44,6 @@ It's your typical [eternal cycle of data, flowing](https://github.com/Day8/re-fr
 As you can see, remlok allows you to have your say on every step of the application lifecycle.
 It also tries to be as predictable and reasonable as possible with its default actions.
 
-## Locrem
-
-Read and mutation functions return locrems.
-
-A locrem is a map
-
-```clojure
-{:loc local-result 
- :rem send-this-to-remote}
-```
-
-Both `:loc` and `:rem` are optional.
-
 ## Query
 
 A query is a pair
@@ -89,12 +76,16 @@ Read function will receive two arguments, `db` and `query`.
 
 `query` - the query to read.
 
-Read function must return this [locrem](#locrem) 
+Read function must return 
 
 ```clojure
 {:loc reaction 
- :rem query}
+ :remote-foo query-foo
+ :bar-remote query-bar
+ ...}
 ```
+
+All those fields are optional.
 
 ## Render
 
@@ -130,12 +121,16 @@ Mutation function will receive two arguments, `db` and `query`.
 
 `query` - the query to read.
 
-Mutation function must return this [locrem](#locrem) 
+Mutation function must return 
 
 ```clojure
 {:loc db* 
- :rem query}
+ :remote-foo query-foo
+ :bar-remote query-bar
+ ...}
 ```
+
+All those fields are optional.
 
 ## Send
 
@@ -143,13 +138,27 @@ You set up your send function with `send` like this
 
 ```clojure
 (send
-  (fn [req res] ;; this is the send function
+  :http-server
+  (fn [_ req res] ;; this is the send function which will talk to the remote server
     (my-network/send
       (my-edn/serialize req)
       (comp res my-edn/deserialize))))
+      
+(send
+  :indexed-db
+  (fn [_ req res] ;; this is the send function which will talk to the local IndexedDB
+    ;; some IndexedDB logic
+    ))
 ```
 
-Send function will receive `req` and `res` arguments.
+As you can see, you can have different send functions for every remote your application will talk to.
+
+Also, it's important to understand that "remote" doesn't necessarily mean a remote machine/process.
+It just means something outside of remlok.
+
+Send function will receive `rem`, `req` and `res` arguments.
+
+`rem` - the remote the request is intended for.
 
 `req` - the request.
 
@@ -292,7 +301,7 @@ Of course, you can set up your own fallback (the "default" handler):
   :remlok/default
   (fn [db query]
     (println "Warning! Unknown query " (str query))
-    nil ;; nil is explicit to emphasize that we are returning an empty locrem
+    nil ;; just to emphasize that we are returning an empty result
     ))
 ```
 
@@ -304,6 +313,34 @@ Note that even if you set up your own default handler, you still can use default
   pubf ;; simple enough for pubf to handle
   )
 ```
+
+## Middleware
+
+remlok provides a very convenient middleware mechanism for everything - reads, mutations, sends and merges.
+
+The middleware is registered for `:remlok/mware` topic.
+
+Your middleware function is just `f -> f*`, much like a Python decorator.
+
+For example
+
+```clojure
+(pub
+  :remlok/mware
+  (fn [f] ;; this is the middleware function which will log all the reads
+    (fn [db query]
+      (println "Reading: " (str query))
+      (f db query))))
+      
+(send
+  :remlok/mware
+  (fn [f] ;; this is the middleware function which will prevent the sends to :bad-remote
+    (fn [rem req res]
+      (when (not= rem :bad-remote)
+        (f rem req res)))))
+```
+
+(Note that your middleware must be a pure function, since remlok may call it many times.)
 
 ## Examples
 
