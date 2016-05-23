@@ -99,11 +99,11 @@
       (js/setTimeout sync! 0))))
 
 (defn- sched-read! [rem query]
-  (swap! sync update-in [:rems rem :reads] conj query)
+  (swap! sync update-in [:rems rem :reads] (fnil conj []) query)
   (sched-sync!))
 
 (defn- sched-mut! [rem query]
-  (swap! sync update-in [:rems rem :muts] conj query)
+  (swap! sync update-in [:rems rem :muts] (fnil conj []) query)
   (sched-sync!))
 
 ;;;;;;;;;;;;;;;
@@ -171,7 +171,8 @@
         res (make-shield #(f db query))
         loc (get res :loc ::none)
         rems (dissoc res :loc)]
-    (doseq [[rem query] rems]
+    (doseq [[rem query] rems
+            :when query]
       (sched-read! rem query))
     (if (not= loc ::none)
       loc
@@ -190,6 +191,7 @@
         rems (dissoc res :loc)]
     (when (not= loc ::none)
       (reset! db loc))
-    (doseq [[rem query] rems]
+    (doseq [[rem query] rems
+            :when query]
       (sched-mut! rem query))
     nil))
