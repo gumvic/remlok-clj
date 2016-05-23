@@ -99,11 +99,11 @@
       (js/setTimeout sync! 0))))
 
 (defn- sched-read! [rem query]
-  (swap! sync update-in [:rem rem :reads] conj query)
+  (swap! sync update-in [:rems rem :reads] conj query)
   (sched-sync!))
 
 (defn- sched-mut! [rem query]
-  (swap! sync update-in [:rem rem :muts] conj query)
+  (swap! sync update-in [:rems rem :muts] conj query)
   (sched-sync!))
 
 ;;;;;;;;;;;;;;;
