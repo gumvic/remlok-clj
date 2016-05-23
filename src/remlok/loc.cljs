@@ -44,7 +44,7 @@
 
 (def ^:private sync
   (atom {:scheduled? false
-         :rem nil
+         :rems nil
          :send (handlers identity sendf)
          :merge (handlers identity mergef)}))
 
@@ -84,13 +84,13 @@
       nov)))
 
 (defn- sync! []
-  (let [{:keys [send rem]} @sync]
-    (doseq [[r {:keys [reads muts]}] rem
+  (let [{:keys [send rems]} @sync]
+    (doseq [[rem {:keys [reads muts]}] rems
             :let [req {:reads (distinct reads)
                        :muts muts}
-                  send! (handler send r)]]
-      (send! req merge!))
-    (swap! sync assoc :scheduled? false :rem nil)))
+                  send! (handler send rem)]]
+      (send! rem req merge!))
+    (swap! sync assoc :scheduled? false :rems nil)))
 
 (defn- sched-sync! []
   (let [{:keys [scheduled?]} @sync]
@@ -170,9 +170,9 @@
         f (handler @pubs topic)
         res (make-shield #(f db query))
         loc (get res :loc ::none)
-        rem (dissoc res :loc)]
-    (doseq [[r q] rem]
-      (sched-read! r q))
+        rems (dissoc res :loc)]
+    (doseq [[rem query] rems]
+      (sched-read! rem query))
     (if (not= loc ::none)
       loc
       (r/atom nil))))
@@ -187,9 +187,9 @@
         f (handler @muts topic)
         res (make-shield #(f @db query))
         loc (get res :loc ::none)
-        rem (dissoc res :loc)]
+        rems (dissoc res :loc)]
     (when (not= loc ::none)
       (reset! db loc))
-    (doseq [[r q] rem]
-      (sched-mut! r q))
+    (doseq [[rem query] rems]
+      (sched-mut! rem query))
     nil))
