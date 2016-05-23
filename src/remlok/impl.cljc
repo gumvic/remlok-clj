@@ -13,6 +13,6 @@
 
 (defn handler [handlers topic]
   (let [mware (get handlers :remlok/mware)
-        def (get handlers :remlok/default)
-        handler (get handlers topic def)]
+        default (get handlers :remlok/default)
+        handler (get handlers topic default)]
     (mware handler)))

@@ -29,15 +29,15 @@
   "Publishes the topic using the supplied function.
   The function must be (ctx, query) -> any
   Use :remlok/default topic to set the fallback."
-  [attr f]
-  (swap! pubs handle attr f))
+  [topic f]
+  (swap! pubs handle topic f))
 
 (defn mut
   "Sets the mutation handler for the topic using the supplied function.
   The function must be (ctx, query) -> any
   Use :remlok/default topic to set the fallback."
-  [attr f]
-  (swap! muts handle attr f))
+  [topic f]
+  (swap! muts handle topic f))
 
 (defn read
   "Reads the query using the function set by pub."

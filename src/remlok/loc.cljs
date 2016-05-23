@@ -39,30 +39,32 @@
 (defn sendf
   "Default send function.
   Doesn't do anything."
-  [req _]
-  (.warn js/console "This send is omitted (see remlok.loc/send): " (str req)))
+  [rem req _]
+  (.warn js/console "This send is omitted: " (str req) " -> " (str rem)))
 
 (def ^:private sync
   (atom {:scheduled? false
-         :reads []
-         :muts []
-         :send sendf
+         :rem nil
+         :send (handlers identity sendf)
          :merge (handlers identity mergef)}))
 
 (defn send
-  "Sets the send function.
+  "Sets the send function for the remote.
   Send function is (req, res) -> none
   req is {:reads [query0 query1 ...], :muts [query0 query1 ...]}.
-  response should be [[query0 data0], [query1 data1], ...].
-  The responsibility of the function will be to pass the req to the remote, and call the res with the response."
-  [f]
-  (swap! sync assoc :send f))
+  response must be [[query0 data0], [query1 data1], ...].
+  The responsibility of the function will be to pass the req to the remote, and call the res with the response.
+  Use :remlok/default to set the fallback.
+  Use :remlok/mware to set the middleware."
+  [rem f]
+  (swap! sync update :send handle rem f))
 
 (defn merge
   "Sets the merge function for the topic.
   Merge function is (db, query, data) -> db*
   Note that the db will be already derefed.
-  Use :remlok/default topic to set the fallback."
+  Use :remlok/default to set the fallback.
+  Use :remlok/mware to set the middleware."
   [topic f]
   (swap! sync update :merge handle topic f))
 
@@ -82,18 +84,13 @@
       nov)))
 
 (defn- sync! []
-  (let [{:keys [send reads muts]} @sync
-        req (cljs.core/merge
-              (when (seq reads) {:reads (distinct reads)})
-              (when (seq muts) {:muts muts}))]
-    (when (seq req)
-      (send req merge!)
-      (swap!
-        sync
-        assoc
-        :scheduled? false
-        :reads []
-        :muts []))))
+  (let [{:keys [send rem]} @sync]
+    (doseq [[r {:keys [reads muts]}] rem
+            :let [req {:reads (distinct reads)
+                       :muts muts}
+                  send! (handler send r)]]
+      (send! req merge!))
+    (swap! sync assoc :scheduled? false :rem nil)))
 
 (defn- sched-sync! []
   (let [{:keys [scheduled?]} @sync]
@@ -101,12 +98,12 @@
       (swap! sync assoc :scheduled? true)
       (js/setTimeout sync! 0))))
 
-(defn- sched-read! [query]
-  (swap! sync update :reads conj query)
+(defn- sched-read! [rem query]
+  (swap! sync update-in [:rem rem :reads] conj query)
   (sched-sync!))
 
-(defn- sched-mut! [query]
-  (swap! sync update :muts conj query)
+(defn- sched-mut! [rem query]
+  (swap! sync update-in [:rem rem :muts] conj query)
   (sched-sync!))
 
 ;;;;;;;;;;;;;;;
@@ -145,19 +142,21 @@
 
 (defn pub
   "Publishes the topic using the supplied function.
-  The function must be (db, query) -> {:loc reaction, :rem query}
-  Both :loc and :rem are optional.
+  The function must be (db, query) -> {:loc reaction, :rem-a query-a, :rem-b query-b, ...}
+  All map keys are optional.
   Note that the db will not be derefed, so that you can build a reaction.
-  Use :remlok/default topic to set the fallback."
+  Use :remlok/default to set the fallback.
+  Use :remlok/mware to set the middleware."
   [topic f]
   (swap! pubs handle topic f))
 
 (defn mut
   "Sets the mutation handler for the topic using the supplied function.
-  The function must be (db, query) -> {:loc db*, :rem query}
-  Both :loc and :rem are optional.
+  The function must be (db, query) -> {:loc db*, :rem-a query-a, :rem-b query-b, ...}
+  All map keys are optional.
   Note that the db will be already derefed.
-  Use :remlok/default topic to set the fallback."
+  Use :remlok/default to set the fallback.
+  Use :remlok/mware to set the middleware."
   [topic f]
   (swap! muts handle topic f))
 
@@ -165,15 +164,16 @@
   "Reads the query using the function set by pub.
   The query is a vector of two, [topic args].
   Both topic and args are arbitrary clojure values.
-  Will fallback to the default (pubf) if no function is found for the topic.
   Returns a reaction."
   [query]
   (let [[topic _] query
         f (handler @pubs topic)
-        {:keys [loc rem]} (make-shield #(f db query))]
-    (when (some? rem)
-      (sched-read! rem))
-    (if (some? loc)
+        res (make-shield #(f db query))
+        loc (get res :loc ::none)
+        rem (dissoc res :loc)]
+    (doseq [[r q] rem]
+      (sched-read! r q))
+    (if (not= loc ::none)
       loc
       (r/atom nil))))
 
@@ -181,14 +181,15 @@
   "Performs the mutation using the function set by mut.
   The query is a vector of two, [topic args].
   Both topic and args are arbitrary clojure values.
-  Will fallback to the default (mutf) if no function is found for the topic.
   Always returns nil."
   [query]
   (let [[topic _] query
         f (handler @muts topic)
-        {:keys [loc rem]} (make-shield #(f @db query))]
-    (when (some? loc)
+        res (make-shield #(f @db query))
+        loc (get res :loc ::none)
+        rem (dissoc res :loc)]
+    (when (not= loc ::none)
       (reset! db loc))
-    (when (some? rem)
-      (sched-mut! rem))
+    (doseq [[r q] rem]
+      (sched-mut! r q))
     nil))
